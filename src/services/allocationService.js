@@ -20,6 +20,7 @@ import { addAssetHistoryInBatch } from "./assetService";
  */
 export async function allocateAsset({
   assetId, assetTag, holderId, holderType, holderName,
+  departmentId = null, departmentName = null,
   allocatedByUserId, expectedReturnDate = null,
 }, actorUser) {
   // Phase 1: pre-check
@@ -49,6 +50,8 @@ export async function allocateAsset({
     txn.update(doc(db, "assets", assetId), {
       status: "Allocated", currentHolderId: holderId,
       currentHolderName: holderName, currentHolderType: holderType,
+      departmentId: departmentId || null,
+      departmentName: departmentName || null,
       updatedAt: serverTimestamp(),
     });
 
@@ -91,7 +94,8 @@ export async function returnAsset(allocationId, { returnConditionNotes = null } 
     });
     txn.update(doc(db, "assets", allocData.assetId), {
       status: "Available", currentHolderId: null, currentHolderName: null,
-      currentHolderType: null, updatedAt: serverTimestamp(),
+      currentHolderType: null, departmentId: null, departmentName: null,
+      updatedAt: serverTimestamp(),
     });
 
     addAssetHistoryInBatch(txn, allocData.assetId, {
@@ -139,7 +143,10 @@ export async function approveTransfer(allocationId, requestId, approvedByUserId,
     });
     txn.update(doc(db, "assets", d.assetId), {
       currentHolderId: newHolder.holderId, currentHolderName: newHolder.holderName,
-      currentHolderType: newHolder.holderType, updatedAt: serverTimestamp(),
+      currentHolderType: newHolder.holderType,
+      departmentId: newHolder.departmentId || null,
+      departmentName: newHolder.departmentName || null,
+      updatedAt: serverTimestamp(),
     });
 
     addAssetHistoryInBatch(txn, d.assetId, {

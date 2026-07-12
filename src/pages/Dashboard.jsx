@@ -1,16 +1,22 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
+import DashboardOverview from "../components/DashboardOverview";
 import OrganizationSetup from "./OrganizationSetup";
 import ResourceBooking from "./ResourceBooking";
 import Maintenance from "./Maintenance";
 import Audit from "./Audit";
 import Reports from "./Reports";
 import Notifications from "./Notifications";
+import AssetsDirectory from "./AssetsDirectory";
 
 export default function Dashboard({ onLogout }) {
-  const { currentUser, logout } = useAuth();
-  const [activePage, setActivePage] = useState("org-setup");
+  const { currentUser, userProfile, logout } = useAuth();
+  const currentRole = userProfile?.role || "Employee";
+
+  // Default to org-setup for Admin, dashboard for others
+  const defaultPage = currentRole === "Admin" ? "org-setup" : "dashboard";
+  const [activePage, setActivePage] = useState(defaultPage);
 
   const handleLogout = async () => {
     await logout();
@@ -59,13 +65,15 @@ export default function Dashboard({ onLogout }) {
 
           {/* Page Content */}
           <div className="page-content">
+            {activePage === "dashboard" && <DashboardOverview onNavigate={setActivePage} />}
             {activePage === "org-setup" && <OrganizationSetup />}
             {activePage === "resource-booking" && <ResourceBooking />}
             {activePage === "maintenance" && <Maintenance />}
             {activePage === "audit" && <Audit />}
             {activePage === "reports" && <Reports />}
             {activePage === "notifications" && <Notifications />}
-            {activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "maintenance" && activePage !== "audit" && activePage !== "reports" && activePage !== "notifications" && (
+            {activePage === "assets" && <AssetsDirectory />}
+            {activePage !== "dashboard" && activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "assets" && activePage !== "maintenance" && activePage !== "audit" && activePage !== "reports" && activePage !== "notifications" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
