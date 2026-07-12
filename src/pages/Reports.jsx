@@ -23,6 +23,7 @@ export default function Reports() {
   const [maintenanceDue, setMaintenanceDue] = useState([]);
   const [retirementDue, setRetirementDue] = useState([]);
   const [auditReports, setAuditReports] = useState([]);
+  const [expandedReports, setExpandedReports] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -163,7 +164,7 @@ export default function Reports() {
         {/* Audit Discrepancy Reports */}
         <div className="report-card top-row-card">
           <h4 className="report-card-title">Recent Audit Reports</h4>
-          <div className="report-card-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
+          <div className="report-card-content" style={{ display: 'flex', flexDirection: 'column', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
             {auditReports.length === 0 ? (
               <EmptyState 
                 title="No closed audits yet" 
@@ -182,16 +183,27 @@ export default function Reports() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {auditReports.map((report, idx) => {
                   const isClean = report.missingCount === 0 && report.damagedCount === 0;
+                  const reportKey = report.id || idx;
+                  const isExpanded = expandedReports[reportKey];
                   return (
-                    <div key={report.id || idx} style={{
-                      background: 'var(--background)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}>
+                    <div 
+                      key={reportKey} 
+                      onClick={() => {
+                        if (!isClean) {
+                          setExpandedReports(prev => ({...prev, [reportKey]: !prev[reportKey]}));
+                        }
+                      }}
+                      style={{
+                        background: 'var(--background)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        cursor: isClean ? 'default' : 'pointer'
+                      }}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
                           Scope: {report.scopeValue}
@@ -208,9 +220,15 @@ export default function Reports() {
                           <span style={{ color: '#f43f5e', fontWeight: 500 }}>
                             {report.missingCount > 0 && `${report.missingCount} missing `}
                             {report.damagedCount > 0 && `${report.damagedCount} damaged`}
+                            <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
                           </span>
                         )}
                       </div>
+                      {isExpanded && !isClean && (
+                        <div style={{ marginTop: '4px', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: 'var(--text-primary)' }}>Flagged Assets:</strong> {report.flaggedAssetNames?.length > 0 ? report.flaggedAssetNames.join(', ') : 'None'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

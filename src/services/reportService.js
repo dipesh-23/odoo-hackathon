@@ -146,6 +146,22 @@ export async function getAuditDiscrepancyReports() {
     
     if (summarySnap.exists()) {
       const summaryData = summarySnap.data();
+      
+      const flaggedNames = [];
+      for (const id of summaryData.flaggedAssetIds || []) {
+        try {
+          const assetDoc = await getDoc(doc(db, "assets", id));
+          if (assetDoc.exists()) {
+            const data = assetDoc.data();
+            flaggedNames.push(data.tag || data.name || id);
+          } else {
+            flaggedNames.push(id);
+          }
+        } catch(e) {
+          flaggedNames.push(id);
+        }
+      }
+
       reports.push({
         id: cycleData.id,
         scopeType: cycleData.scopeType || "Audit",
@@ -154,6 +170,7 @@ export async function getAuditDiscrepancyReports() {
         totalAssetsChecked: summaryData.totalAssetsChecked || 0,
         missingCount: summaryData.missingCount || 0,
         damagedCount: summaryData.damagedCount || 0,
+        flaggedAssetNames: flaggedNames,
         generatedAt: summaryData.generatedAt?.toDate ? summaryData.generatedAt.toDate() : new Date()
       });
     }
