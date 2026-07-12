@@ -112,3 +112,44 @@ export async function getAssetsNearingRetirement() {
     return retirementDate <= oneYearFromNow;
   });
 }
+
+/**
+ * Fetches discrepancy reports for all closed audit cycles.
+ * Avoids collectionGroup to prevent requiring a custom index.
+ */
+export async function getAuditDiscrepancyReports() {
+  const q = query(
+    collection(db, "auditCycles"),
+    where("status", "==", "Closed"),
+    orderBy("closedAt", "desc"),
+    limit(10)
+  );
+
+  const snap = await getDocs(q);
+  if (snap.empty) return [];
+
+  const reports = [];
+  for (const cycleDoc of snap.docs) {
+    const cycleData = cycleDoc.data();
+    
+    // Fetch the summary doc for this cycle
+    const summaryRef = doc(db, "auditCycles", cycleDoc.id, "discrepancyReport", "summary");
+    const summarySnap = await getDoc(summaryRef);
+    
+    if (summarySnap.exists()) {
+      const summaryData = summarySnap.data();
+      reports.push({
+        id: cycleDoc.id,
+        scopeType: cycleData.scopeType || "Audit",
+        scopeValue: cycleData.scopeValue || cycleData.scopeType || "All",
+        closedAt: cycleData.closedAt?.toDate ? cycleData.closedAt.toDate() : new Date(),
+        totalAssetsChecked: summaryData.totalAssetsChecked || 0,
+        missingCount: summaryData.missingCount || 0,
+        damagedCount: summaryData.damagedCount || 0,
+        generatedAt: summaryData.generatedAt?.toDate ? summaryData.generatedAt.toDate() : new Date()
+      });
+    }
+  }
+
+  return reports;
+}

@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, getDocs } from "firebase/firest
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { createMaintenanceRequest, updateMaintenanceStatus } from "../services/maintenanceService";
+import { canApproveMaintenance } from "../utils/rbac";
 
 const COLUMNS = [
   { id: "Pending", label: "Pending", nextLabel: "Approve", nextStatus: "Approved" },
@@ -13,7 +14,9 @@ const COLUMNS = [
 ];
 
 export default function Maintenance() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+  const role = userProfile?.role || "Employee";
+  const allowApprove = canApproveMaintenance(role);
   const [requests, setRequests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDrop, setConfirmDrop] = useState(null);
@@ -182,9 +185,9 @@ export default function Maintenance() {
                 <div 
                   key={req.id} 
                   className={`kanban-card status-${req.status.toLowerCase()}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, req.id)}
-                  style={{ cursor: 'grab' }}
+                  draggable={allowApprove}
+                  onDragStart={(e) => allowApprove && handleDragStart(e, req.id)}
+                  style={{ cursor: allowApprove ? 'grab' : 'default' }}
                 >
                   <div className="kanban-card-tag">{req.assetTag}</div>
                   <div className="kanban-card-issue">{req.issueDescription}</div>
@@ -195,7 +198,7 @@ export default function Maintenance() {
                     </div>
                   )}
 
-                  {col.nextStatus && (
+                  {col.nextStatus && allowApprove && (
                     <button 
                       className="btn-outline kanban-action-btn"
                       onClick={() => handleAdvanceStatus(req.id, col.nextStatus)}

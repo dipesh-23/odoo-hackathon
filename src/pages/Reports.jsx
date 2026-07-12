@@ -4,7 +4,8 @@ import {
   getMostUsedAssets,
   getIdleAssets,
   getAssetsDueForMaintenance,
-  getAssetsNearingRetirement
+  getAssetsNearingRetirement,
+  getAuditDiscrepancyReports
 } from "../services/reportService";
 
 const EmptyState = ({ title, subtitle, icon }) => (
@@ -21,6 +22,7 @@ export default function Reports() {
   const [idle, setIdle] = useState([]);
   const [maintenanceDue, setMaintenanceDue] = useState([]);
   const [retirementDue, setRetirementDue] = useState([]);
+  const [auditReports, setAuditReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -35,18 +37,20 @@ export default function Reports() {
         getMostUsedAssets(),
         getIdleAssets(),
         getAssetsDueForMaintenance(),
-        getAssetsNearingRetirement()
+        getAssetsNearingRetirement(),
+        getAuditDiscrepancyReports()
       ]);
 
       const safeData = results.map(r => r.status === 'fulfilled' ? r.value : []);
 
-      const [deptStats, used, idleList, maintDue, retireDue] = safeData;
+      const [deptStats, used, idleList, maintDue, retireDue, audits] = safeData;
 
       setDepartmentStats(deptStats);
       setMostUsed(used);
       setIdle(idleList);
       setMaintenanceDue(maintDue);
       setRetirementDue(retireDue);
+      setAuditReports(audits);
     } catch (err) {
       console.error("Error loading reports data:", err);
       // Failsafe if index doesn't exist yet
@@ -90,6 +94,13 @@ export default function Reports() {
     });
     retirementDue.forEach(a => {
       lines.push(`RETIREMENT: ${a.name || a.tag} - Nearing retirement threshold`);
+    });
+    lines.push("");
+
+    lines.push("--- Audit Discrepancy Reports ---");
+    lines.push("Closed At,Scope,Assets Checked,Missing,Damaged");
+    auditReports.forEach(a => {
+      lines.push(`${a.closedAt ? a.closedAt.toLocaleDateString() : ''},${a.scopeValue} (${a.scopeType}),${a.totalAssetsChecked},${a.missingCount},${a.damagedCount}`);
     });
 
     const csvContent = lines.join("\n");
@@ -149,48 +160,62 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Maintenance Frequency (Static Illustrative Line Chart) */}
+        {/* Audit Discrepancy Reports */}
         <div className="report-card top-row-card">
-          <h4 className="report-card-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            Maintenance frequency
-            <span className="demo-badge">Demo data</span>
-          </h4>
-          <div className="report-card-content">
-            <div className="svg-line-chart">
-              <svg viewBox="0 0 400 180" width="100%" height="180">
-                {/* Gridlines */}
-                <line x1="30" y1="20" x2="380" y2="20" stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-                <line x1="30" y1="70" x2="380" y2="70" stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-                <line x1="30" y1="120" x2="380" y2="120" stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />
-                
-                {/* Y-axis labels */}
-                <text x="20" y="24" fill="var(--text-muted)" fontSize="11" textAnchor="end">12</text>
-                <text x="20" y="74" fill="var(--text-muted)" fontSize="11" textAnchor="end">6</text>
-                <text x="20" y="124" fill="var(--text-muted)" fontSize="11" textAnchor="end">0</text>
-                
-                {/* Y-axis line */}
-                <line x1="30" y1="10" x2="30" y2="130" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                {/* X-axis line */}
-                <line x1="30" y1="120" x2="380" y2="120" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                
-                {/* Line */}
-                <polyline fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinejoin="round" points="60,105 130,90 200,75 270,45 340,15" />
-                
-                {/* Dots */}
-                <circle cx="60" cy="105" r="3.5" fill="#f59e0b" />
-                <circle cx="130" cy="90" r="3.5" fill="#f59e0b" />
-                <circle cx="200" cy="75" r="3.5" fill="#f59e0b" />
-                <circle cx="270" cy="45" r="3.5" fill="#f59e0b" />
-                <circle cx="340" cy="15" r="3.5" fill="#f59e0b" />
-
-                {/* X-axis labels */}
-                <text x="60" y="145" fill="var(--text-muted)" fontSize="11" textAnchor="middle">Jan</text>
-                <text x="130" y="145" fill="var(--text-muted)" fontSize="11" textAnchor="middle">Feb</text>
-                <text x="200" y="145" fill="var(--text-muted)" fontSize="11" textAnchor="middle">Mar</text>
-                <text x="270" y="145" fill="var(--text-muted)" fontSize="11" textAnchor="middle">Apr</text>
-                <text x="340" y="145" fill="var(--text-muted)" fontSize="11" textAnchor="middle">May</text>
-              </svg>
-            </div>
+          <h4 className="report-card-title">Recent Audit Reports</h4>
+          <div className="report-card-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
+            {auditReports.length === 0 ? (
+              <EmptyState 
+                title="No closed audits yet" 
+                subtitle="Run and close an audit cycle to see reports here"
+                icon={
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                }
+              />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {auditReports.map((report, idx) => {
+                  const isClean = report.missingCount === 0 && report.damagedCount === 0;
+                  return (
+                    <div key={report.id || idx} style={{
+                      background: 'var(--background)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
+                          Scope: {report.scopeValue}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {report.closedAt ? report.closedAt.toLocaleDateString() : ''}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Checked: {report.totalAssetsChecked}</span>
+                        {isClean ? (
+                          <span style={{ color: '#10b981', fontWeight: 500 }}>Clean Audit ✓</span>
+                        ) : (
+                          <span style={{ color: '#f43f5e', fontWeight: 500 }}>
+                            {report.missingCount > 0 && `${report.missingCount} missing `}
+                            {report.damagedCount > 0 && `${report.damagedCount} damaged`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
