@@ -1,15 +1,16 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: "grid" },
-  { id: "org-setup", label: "Organization Setup", icon: "building" },
-  { id: "assets", label: "Assets", icon: "box" },
-  { id: "allocation", label: "Allocation & Transfer", icon: "shuffle" },
-  { id: "resource-booking", label: "Resource Booking", icon: "calendar" },
-  { id: "maintenance", label: "Maintenance", icon: "tool" },
-  { id: "audit", label: "Audit", icon: "clipboard" },
-  { id: "reports", label: "Reports", icon: "bar-chart" },
-  { id: "notifications", label: "Notifications", icon: "bell" },
+  { id: "dashboard", label: "Dashboard", icon: "grid", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
+  { id: "org-setup", label: "Organization Setup", icon: "building", roles: ["Admin"] },
+  { id: "assets", label: "Assets", icon: "box", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
+  { id: "allocation", label: "Allocation & Transfer", icon: "shuffle", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
+  { id: "resource-booking", label: "Resource Booking", icon: "calendar", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
+  { id: "maintenance", label: "Maintenance", icon: "tool", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
+  { id: "audit", label: "Audit", icon: "clipboard", roles: ["Admin", "AssetManager"] },
+  { id: "reports", label: "Reports", icon: "bar-chart", roles: ["Admin", "AssetManager"] },
+  { id: "notifications", label: "Notifications", icon: "bell", roles: ["Admin", "AssetManager", "DepartmentHead", "Employee"] },
 ];
 
 const icons = {
@@ -70,6 +71,12 @@ const icons = {
 
 export default function Sidebar({ activePage, onNavigate }) {
   const [collapsed, setCollapsed] = useState(false);
+  const { userProfile } = useAuth();
+  const currentRole = userProfile?.role || "Employee";
+
+  const allowedNavItems = navItems.filter((item) =>
+    item.roles.includes(currentRole)
+  );
 
   return (
     <aside className={`sidebar ${collapsed ? "sidebar-collapsed" : ""}`}>
@@ -83,7 +90,7 @@ export default function Sidebar({ activePage, onNavigate }) {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {navItems.map((item) => (
+        {allowedNavItems.map((item) => (
           <button
             key={item.id}
             id={`nav-${item.id}`}

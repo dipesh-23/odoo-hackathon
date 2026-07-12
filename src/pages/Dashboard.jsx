@@ -5,8 +5,12 @@ import OrganizationSetup from "./OrganizationSetup";
 import AssetsDirectory from "./AssetsDirectory";
 
 export default function Dashboard({ onLogout }) {
-  const { currentUser, logout } = useAuth();
-  const [activePage, setActivePage] = useState("org-setup");
+  const { currentUser, userProfile, logout } = useAuth();
+  const currentRole = userProfile?.role || "Employee";
+
+  // Default to org-setup for Admin, dashboard for others
+  const defaultPage = currentRole === "Admin" ? "org-setup" : "dashboard";
+  const [activePage, setActivePage] = useState(defaultPage);
 
   const handleLogout = async () => {
     await logout();
