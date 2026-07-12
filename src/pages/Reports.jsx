@@ -30,13 +30,17 @@ export default function Reports() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [deptStats, used, idleList, maintDue, retireDue] = await Promise.all([
+      const results = await Promise.allSettled([
         getAllDepartmentStats(),
         getMostUsedAssets(),
         getIdleAssets(),
         getAssetsDueForMaintenance(),
         getAssetsNearingRetirement()
       ]);
+
+      const safeData = results.map(r => r.status === 'fulfilled' ? r.value : []);
+
+      const [deptStats, used, idleList, maintDue, retireDue] = safeData;
 
       setDepartmentStats(deptStats);
       setMostUsed(used);

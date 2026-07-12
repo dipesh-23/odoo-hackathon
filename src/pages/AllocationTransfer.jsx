@@ -74,7 +74,7 @@ function AllocateModal({ assets, employees, departments, allAllocations, onClose
 
   const holderOptions = form.holderType === "Employee"
     ? employees.filter(e => e.id !== activeAlloc?.holderId)
-    : departments.filter(d => d.status === "Active");
+    : departments.filter(d => d.id !== activeAlloc?.holderId);
   const selectedHolder = holderOptions.find(h => h.id === form.holderId);
 
   const canSubmitAllocation = !isAllocated && form.assetId && form.holderId;
@@ -127,11 +127,21 @@ function AllocateModal({ assets, employees, departments, allAllocations, onClose
                 )}
                 
                 <div className="form-group" style={{ marginBottom: 0, gridColumn: isAllocated ? "auto" : "span 2" }}>
-                  <label className="form-label" style={{ color: "var(--text-muted)", fontSize: 12 }}>To</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <label className="form-label" style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 0 }}>To</label>
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--text-secondary)", fontSize: "12px", cursor: "pointer", margin: 0 }}>
+                        <input type="radio" name="holderType" value="Employee" checked={form.holderType === "Employee"} onChange={() => setForm(f => ({ ...f, holderType: "Employee", holderId: "" }))} style={{ margin: 0 }} /> Employee
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--text-secondary)", fontSize: "12px", cursor: "pointer", margin: 0 }}>
+                        <input type="radio" name="holderType" value="Department" checked={form.holderType === "Department"} onChange={() => setForm(f => ({ ...f, holderType: "Department", holderId: "" }))} style={{ margin: 0 }} /> Department
+                      </label>
+                    </div>
+                  </div>
                   <select className="form-input form-select" value={form.holderId} onChange={e => setForm(f => ({ ...f, holderId: e.target.value }))}>
-                    <option value="">Select Employee...</option>
+                    <option value="">{form.holderType === "Employee" ? "Select Employee..." : "Select Department..."}</option>
                     {holderOptions.map(h => (
-                      <option key={h.id} value={h.id}>{h.name || h.email}</option>
+                      <option key={h.id} value={h.id}>{h.name || h.email || "Unnamed"}</option>
                     ))}
                   </select>
                 </div>
