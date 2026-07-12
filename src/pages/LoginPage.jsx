@@ -211,23 +211,23 @@ export default function LoginPage({ onLogin }) {
               </>
             )}
 
-            {/* In Signup/Reset mode, show submit button at bottom of form */}
-            {!isLogin && (
-              <button
-                id="submit-btn"
-                type="submit"
-                className="btn-primary"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="spinner" />
-                ) : isReset ? (
-                  "Send Reset Email"
-                ) : (
-                  "Create Account"
-                )}
-              </button>
-            )}
+            {/* Submit button at bottom of form */}
+            <button
+              id="submit-btn"
+              type="submit"
+              className="btn-primary"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="spinner" />
+              ) : isReset ? (
+                "Send Reset Email"
+              ) : isSignup ? (
+                "Create Account"
+              ) : (
+                "Sign In"
+              )}
+            </button>
           </form>
 
           {/* Divider + Footer */}

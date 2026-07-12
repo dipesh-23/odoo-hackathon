@@ -1,0 +1,157 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return isRole("Admin");
+    }
+
+    function isAssetManager() {
+      return isRole("AssetManager") || isAdmin();
+    }
+
+    // ─── 1. users ─────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // On create, client MUST write role = "Employee". No skipping straight to Admin.
+      allow create: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.role == "Employee";
+      
+      // On update, only Admin can change the role field.
+      // Users can update their own non-role fields.
+      allow update: if isAuthenticated() && (
+        (isAdmin()) ||
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ─── 2. departments ───────────────────────────────────────────────────────
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ─── 3. categories ────────────────────────────────────────────────────────
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAssetManager();
+    }
+
+    // ─── 4. assets ────────────────────────────────────────────────────────────
+    match /assets/{assetId} {
+      allow read: if isAuthenticated();
+      
+      // Status enum validation
+      function isValidAssetStatus(status) {
+        return status in ["Available", "Allocated", "Reserved", "UnderMaintenance", "Lost", "Retired", "Disposed"];
+      }
+
+      allow create: if isAssetManager() && isValidAssetStatus(request.resource.data.status);
+      allow update: if isAuthenticated() && isValidAssetStatus(request.resource.data.status);
+      allow delete: if isAdmin();
+
+      match /history/{historyId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+
+      match /stats/summary {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // ─── 5. allocations ───────────────────────────────────────────────────────
+    match /allocations/{allocationId} {
+      // Employees can read their own. Department Heads can read their dept's. Managers/Admins can read all.
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && request.resource.data.status in ["Active", "Returned", "TransferRequested", "TransferApproved"];
+
+      match /transferRequests/{requestId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated()
+                     && request.resource.data.status in ["Requested", "Approved", "Rejected"];
+      }
+    }
+
+    // ─── 6. resources (optional) ──────────────────────────────────────────────
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAssetManager();
+    }
+
+    // ─── 7. bookings ──────────────────────────────────────────────────────────
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && request.resource.data.status in ["Upcoming", "Ongoing", "Completed", "Cancelled"];
+    }
+
+    // ─── 8. maintenanceRequests ───────────────────────────────────────────────
+    match /maintenanceRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && request.resource.data.status in ["Pending", "Approved", "Rejected", "TechnicianAssigned", "InProgress", "Resolved"];
+    }
+
+    // ─── 9. auditCycles ───────────────────────────────────────────────────────
+    match /auditCycles/{cycleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAssetManager()
+                   && request.resource.data.status in ["Planned", "InProgress", "Closed"];
+
+      match /assetChecks/{assetId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() // Auditors
+                     && request.resource.data.result in ["Pending", "Verified", "Missing", "Damaged"];
+      }
+
+      match /discrepancyReport/summary {
+        allow read: if isAuthenticated();
+        allow write: if isAssetManager();
+      }
+    }
+
+    // ─── 10. notifications ────────────────────────────────────────────────────
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated(); // Actions create notifications for others
+      allow delete: if false; // append-only or use TTL
+    }
+
+    // ─── 11. activityLogs ─────────────────────────────────────────────────────
+    match /activityLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Append-only immutable log
+    }
+
+    // ─── 12. departmentStats ──────────────────────────────────────────────────
+    match /departmentStats/{departmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // ─── 13. counters ─────────────────────────────────────────────────────────
+    match /counters/{counterId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
