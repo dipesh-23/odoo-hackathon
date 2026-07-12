@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
 import AssetsDirectory from "./AssetsDirectory";
+import AllocationTransfer from "./AllocationTransfer";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, userProfile, logout } = useAuth();
@@ -61,7 +62,8 @@ export default function Dashboard({ onLogout }) {
           <div className="page-content">
             {activePage === "org-setup" && <OrganizationSetup />}
             {activePage === "assets" && <AssetsDirectory />}
-            {activePage !== "org-setup" && activePage !== "assets" && (
+            {activePage === "allocation" && <AllocationTransfer />}
+            {activePage !== "org-setup" && activePage !== "assets" && activePage !== "allocation" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
