@@ -14,6 +14,7 @@ import {
   getDocs,
   getDoc,
   where,
+  doc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -22,30 +23,19 @@ import { db } from "../firebase";
  * Uses a collection-group query on 'stats'.
  */
 export async function getMostUsedAssets() {
-  const q = query(
-    collectionGroup(db, "stats"),
-    orderBy("bookingCount30d", "desc"),
-    limit(3)
-  );
-  const snap = await getDocs(q);
+  const snap = await getDocs(collection(db, "assets"));
+  const results = await Promise.all(snap.docs.map(async (d) => {
+    const statSnap = await getDoc(doc(db, "assets", d.id, "stats", "summary"));
+    const statData = statSnap.exists() ? statSnap.data() : {};
+    const assetData = d.data();
+    return {
+      assetId: d.id,
+      name: assetData.name || assetData.tag || "Unknown Asset",
+      bookingCount30d: statData.bookingCount30d || 0,
+    };
+  }));
   
-  const results = [];
-  for (const d of snap.docs) {
-    const statData = d.data();
-    const assetRef = d.ref.parent.parent;
-    if (assetRef) {
-      const assetSnap = await getDoc(assetRef);
-      if (assetSnap.exists()) {
-        const assetData = assetSnap.data();
-        results.push({
-          assetId: assetSnap.id,
-          name: assetData.name || assetData.tag || "Unknown Asset",
-          bookingCount30d: statData.bookingCount30d || 0,
-        });
-      }
-    }
-  }
-  return results;
+  return results.sort((a, b) => b.bookingCount30d - a.bookingCount30d).slice(0, 3);
 }
 
 /**
@@ -53,30 +43,24 @@ export async function getMostUsedAssets() {
  * Null lastUsedAt is technically older than any date.
  */
 export async function getIdleAssets() {
-  const q = query(
-    collectionGroup(db, "stats"),
-    orderBy("lastUsedAt", "asc"),
-    limit(3)
-  );
-  const snap = await getDocs(q);
-  
-  const results = [];
-  for (const d of snap.docs) {
-    const statData = d.data();
-    const assetRef = d.ref.parent.parent;
-    if (assetRef) {
-      const assetSnap = await getDoc(assetRef);
-      if (assetSnap.exists()) {
-        const assetData = assetSnap.data();
-        results.push({
-          assetId: assetSnap.id,
-          name: assetData.name || assetData.tag || "Unknown Asset",
-          lastUsedAt: statData.lastUsedAt || null,
-        });
-      }
-    }
-  }
-  return results;
+  const snap = await getDocs(collection(db, "assets"));
+  const results = await Promise.all(snap.docs.map(async (d) => {
+    const statSnap = await getDoc(doc(db, "assets", d.id, "stats", "summary"));
+    const statData = statSnap.exists() ? statSnap.data() : {};
+    const assetData = d.data();
+    return {
+      assetId: d.id,
+      name: assetData.name || assetData.tag || "Unknown Asset",
+      lastUsedAt: statData.lastUsedAt || null,
+    };
+  }));
+
+  // Sort ascending by time. Null lastUsedAt is treated as 0 (oldest).
+  return results.sort((a, b) => {
+    const timeA = a.lastUsedAt?.toDate ? a.lastUsedAt.toDate().getTime() : 0;
+    const timeB = b.lastUsedAt?.toDate ? b.lastUsedAt.toDate().getTime() : 0;
+    return timeA - timeB;
+  }).slice(0, 3);
 }
 
 /**

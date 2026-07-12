@@ -1691,6 +1691,58 @@ body {
   transition: all 0.2s;
 }
 
+.dashboard-activity {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  backdrop-filter: blur(20px);
+}
+.dashboard-activity-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dashboard-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dashboard-activity-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+}
+.dashboard-activity-item:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(4px);
+}
+.dashboard-activity-item::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  margin-right: 12px;
+  box-shadow: 0 0 8px var(--accent-purple);
+}
+.dashboard-activity-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-style: italic;
+  padding: 12px 0;
+}
+
 .book-submit-btn:hover:not(:disabled) {
   background: var(--primary-hover);
 }
@@ -4745,3 +4797,49 @@ body {
           transform: rotate(360deg);
         }
       }
+
+/* Reports UI Bar Chart Styles */
+.css-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.bar-label {
+  flex: 0 0 120px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.bar-track {
+  flex: 1;
+  height: 12px;
+  background-color: var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 6px;
+  transition: width 0.5s ease-out;
+}
+
+.bar-value {
+  flex: 0 0 40px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}

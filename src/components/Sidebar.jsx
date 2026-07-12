@@ -69,7 +69,7 @@ const icons = {
   ),
 };
 
-export default function Sidebar({ activePage, onNavigate }) {
+export default function Sidebar({ activePage, onNavigate, unreadCount = 0 }) {
   const [collapsed, setCollapsed] = useState(false);
   const { userProfile } = useAuth();
   const currentRole = userProfile?.role || "Employee";
@@ -98,7 +98,16 @@ export default function Sidebar({ activePage, onNavigate }) {
             onClick={() => onNavigate(item.id)}
             title={collapsed ? item.label : undefined}
           >
-            <span className="sidebar-nav-icon">{icons[item.icon]}</span>
+            <span className="sidebar-nav-icon" style={{ position: 'relative' }}>
+              {icons[item.icon]}
+              {item.id === "notifications" && unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: '-2px', right: '-2px', 
+                  width: '8px', height: '8px', background: 'var(--danger)', 
+                  borderRadius: '50%', boxShadow: '0 0 4px var(--danger)'
+                }}></span>
+              )}
+            </span>
             {!collapsed && <span className="sidebar-nav-label">{item.label}</span>}
           </button>
         ))}

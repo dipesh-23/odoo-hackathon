@@ -218,12 +218,19 @@ export async function listBookings({
   if (bookedByUserId) constraints.push(where("bookedByUserId", "==", bookedByUserId));
   if (status) constraints.push(where("status", "==", status));
 
-  constraints.push(orderBy("startTime", "desc"));
   constraints.push(limit(maxResults));
 
   const q = query(collection(db, "bookings"), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  docs.sort((a, b) => {
+    const timeA = a.startTime?.toMillis ? a.startTime.toMillis() : 0;
+    const timeB = b.startTime?.toMillis ? b.startTime.toMillis() : 0;
+    return timeB - timeA;
+  });
+  
+  return docs;
 }
 
 /**
@@ -234,13 +241,28 @@ export async function getUpcomingBookings(userId) {
   const q = query(
     collection(db, "bookings"),
     where("bookedByUserId", "==", userId),
-    where("status", "==", "Upcoming"),
-    where("startTime", ">", now),
-    orderBy("startTime", "asc"),
-    limit(10)
+    where("status", "==", "Upcoming")
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  const docs = [];
+  snap.forEach(d => {
+    const data = d.data();
+    if (data.startTime) {
+      const start = data.startTime.toDate ? data.startTime.toDate() : new Date(data.startTime);
+      if (start > now) {
+        docs.push({ id: d.id, ...data });
+      }
+    }
+  });
+
+  docs.sort((a, b) => {
+    const timeA = a.startTime?.toMillis ? a.startTime.toMillis() : 0;
+    const timeB = b.startTime?.toMillis ? b.startTime.toMillis() : 0;
+    return timeA - timeB;
+  });
+
+  return docs.slice(0, 10);
 }
 
 /**

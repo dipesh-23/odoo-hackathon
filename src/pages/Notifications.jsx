@@ -3,8 +3,9 @@ import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from "f
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { markAllAsRead } from "../services/notificationService";
+import { getRecentActivity } from "../services/activityLogService";
 
-const TABS = ["All", "Alerts", "Approvals", "Bookings"];
+const TABS = ["All", "Alerts", "Approvals", "Bookings", "System Activity"];
 
 // Helper to format "2m ago"
 function timeAgo(date) {
@@ -24,6 +25,7 @@ export default function Notifications() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("All");
   const [notifications, setNotifications] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(Date.now()); // For force-updating relative time
 
@@ -38,6 +40,17 @@ export default function Notifications() {
     
     setIsLoading(true);
     
+    if (activeTab === "System Activity") {
+      getRecentActivity(50).then(data => {
+        setActivities(data);
+        setIsLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setIsLoading(false);
+      });
+      return;
+    }
+
     const constraints = [
       where("userId", "==", currentUser.uid),
     ];
@@ -59,8 +72,8 @@ export default function Notifications() {
       
       // Sort client-side to avoid requiring multiple composite indexes in Firestore
       notifs.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
         return timeB - timeA;
       });
       
@@ -124,6 +137,46 @@ export default function Notifications() {
       <div className="notifications-list">
         {isLoading ? (
           <div className="loading-state">Loading...</div>
+        ) : activeTab === "System Activity" ? (
+          activities.length === 0 ? (
+            <div className="report-empty-state">
+              <div className="report-empty-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <div className="report-empty-title">No system activity yet</div>
+            </div>
+          ) : (
+            activities.map(act => {
+              const dateStr = act.timestamp?.toDate ? timeAgo(act.timestamp.toDate()) : "Just now";
+              
+              // Minimal formatting logic since it's a global feed
+              const { action, actorName, metadata = {} } = act;
+              const assetTag = metadata.assetTag || "";
+              let msg = `${(action || "").replace(/_/g, " ").toLowerCase()} by ${actorName}`;
+              
+              if (action === "ASSET_ALLOCATED") msg = `${assetTag} allocated to ${metadata.holderName || actorName}`;
+              else if (action === "TRANSFER_APPROVED") msg = `Transfer approved: ${assetTag} to ${metadata.to || actorName}`;
+              else if (action === "ASSET_RETURNED") msg = `${assetTag} returned by ${actorName}`;
+              else if (action === "BOOKING_CREATED") msg = `${metadata.resourceName || "Resource"} booking confirmed`;
+              else if (action === "ASSET_CREATED") msg = `New asset registered: ${assetTag}`;
+              else if (action === "AUDIT_CLOSED") msg = `${metadata.scopeValue || "Audit"} closed – ${(metadata.missingCount || 0) + (metadata.damagedCount || 0)} assets flagged`;
+              else if (action === "MAINTENANCE_RAISED") msg = `New maintenance request for ${assetTag}`;
+              else if (action === "MAINTENANCE_APPROVED") msg = `Maintenance request ${assetTag} approved`;
+              else if (action && action.startsWith("MAINTENANCE_")) msg = `${assetTag} maintenance updated`;
+
+              return (
+                <div key={act.id} className="notification-row read">
+                  <div className="notification-indicator"></div>
+                  <div className="notification-content">
+                    <div className="notification-message">{msg}</div>
+                  </div>
+                  <div className="notification-time">{dateStr}</div>
+                </div>
+              );
+            })
+          )
         ) : notifications.length === 0 ? (
           <div className="report-empty-state">
             <div className="report-empty-icon">

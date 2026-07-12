@@ -108,17 +108,21 @@ export async function updateMaintenanceStatus(requestId, newStatus, {
       }, { merge: true });
     }
 
-    // Notification to the user who raised the request
-    const notifType = newStatus === "Approved" ? "MaintenanceApproved"
-      : newStatus === "Rejected" ? "MaintenanceRejected" : null;
-    if (notifType) {
-      createNotificationInBatch(txn, {
-        userId: reqData.raisedByUserId, type: notifType,
-        title: `Maintenance ${newStatus}`,
-        message: `Your maintenance request for ${reqData.assetTag} has been ${newStatus.toLowerCase()}`,
-        relatedRefId: requestId,
-      });
-    }
+    // Notification to the user who raised the request on every status change
+    let notifType = "Alert"; 
+    if (newStatus === "Approved") notifType = "MaintenanceApproved";
+    if (newStatus === "Rejected") notifType = "MaintenanceRejected";
+    
+    // Format camelCase statuses like "TechnicianAssigned" to "technician assigned"
+    const formattedStatus = newStatus.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+    
+    createNotificationInBatch(txn, {
+      userId: reqData.raisedByUserId, 
+      type: notifType,
+      title: `Maintenance Update`,
+      message: `Your maintenance request for ${reqData.assetTag || 'an asset'} is now ${formattedStatus}`,
+      relatedRefId: requestId,
+    });
 
     // Activity log
     addActivityLogInBatch(txn, {

@@ -362,7 +362,25 @@ export default function Audit() {
 
       {isClosed && discrepancyReport && totalFlagged > 0 && (
         <div className="discrepancy-banner">
-          {totalFlagged} asset{totalFlagged !== 1 ? 's' : ''} flagged - discrepancy report generated automatically
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <span>{totalFlagged} asset{totalFlagged !== 1 ? 's' : ''} flagged - discrepancy report generated automatically</span>
+            <button 
+              className="btn-secondary" 
+              style={{padding: '4px 12px', fontSize: '13px'}}
+              onClick={() => {
+                const reportDiv = document.getElementById('discrepancy-report-details');
+                if (reportDiv) reportDiv.style.display = reportDiv.style.display === 'none' ? 'block' : 'none';
+              }}
+            >
+              View Report
+            </button>
+          </div>
+          <div id="discrepancy-report-details" style={{display: 'none', marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px'}}>
+            <strong>Flagged Asset IDs:</strong> {discrepancyReport.flaggedAssetIds?.join(", ") || "None"}
+            <p style={{marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)'}}>
+              These assets have been automatically marked as 'Lost' or 'Damaged' in the system. Check the table below for full verification details.
+            </p>
+          </div>
         </div>
       )}
 

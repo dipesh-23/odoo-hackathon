@@ -135,11 +135,15 @@ export async function closeAuditCycle(auditCycleId, actorUser) {
   });
   opCount += 1;
 
+  const cycleSnap = await getDoc(doc(db, "auditCycles", auditCycleId));
+  const cycleData = cycleSnap.exists() ? cycleSnap.data() : {};
+  const scopeValue = cycleData.scopeValue || cycleData.scopeType || "Audit";
+
   addActivityLogInBatch(batch, {
     actorUserId: actorUser.uid, actorName: actorUser.name || "",
     action: "AUDIT_CLOSED", targetCollection: "auditCycles",
     targetDocId: auditCycleId,
-    metadata: { totalAssetsChecked, missingCount, damagedCount },
+    metadata: { totalAssetsChecked, missingCount, damagedCount, scopeValue },
   });
   opCount += 1;
 
