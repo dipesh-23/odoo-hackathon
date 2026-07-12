@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
@@ -78,6 +78,21 @@ export default function Dashboard({ onLogout }) {
     return () => unsubscribe();
   }, []);
 
+  // Unread Notifications Badge Logic
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!currentUser) return;
+    const qNotifs = query(
+      collection(db, "notifications"), 
+      where("userId", "==", currentUser.uid), 
+      where("isRead", "==", false)
+    );
+    const unsubNotifs = onSnapshot(qNotifs, (snap) => {
+      setUnreadCount(snap.docs.length);
+    });
+    return () => unsubNotifs();
+  }, [currentUser]);
+
   // Guard: if someone tries to navigate to a forbidden page, bounce them back
   function handleNavigate(page) {
     if (isPageAllowed(page, currentRole)) setActivePage(page);
@@ -92,7 +107,7 @@ export default function Dashboard({ onLogout }) {
     <div className="app-shell">
       <div className="app-window">
         {/* Sidebar */}
-        <Sidebar activePage={activePage} onNavigate={handleNavigate} />
+        <Sidebar activePage={activePage} onNavigate={handleNavigate} unreadCount={unreadCount} />
 
         {/* Main Content */}
         <main className="main-content">
@@ -102,6 +117,22 @@ export default function Dashboard({ onLogout }) {
               <h2 className="top-bar-page-title">{PAGE_LABELS[activePage] || ""}</h2>
             </div>
             <div className="top-bar-right">
+              <button 
+                className="top-bar-icon-btn" 
+                style={{ position: 'relative' }}
+                onClick={() => handleNavigate("notifications")}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '0px', right: '0px', 
+                    width: '8px', height: '8px', background: 'var(--danger)', 
+                    borderRadius: '50%', boxShadow: '0 0 4px var(--danger)'
+                  }}></span>
+                )}
+              </button>
               <div className="top-bar-user">
                 <div className="top-bar-avatar">
                   {currentUser?.email?.charAt(0).toUpperCase() || "U"}

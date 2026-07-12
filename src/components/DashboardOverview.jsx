@@ -20,16 +20,7 @@ export default function DashboardOverview({ onNavigate }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [
-          availableAssets,
-          allocatedAssets,
-          maintenanceAssets,
-          activeBookingsList,
-          pendingTransfersList,
-          overdueList,
-          activeAllocations,
-          recentActivityList,
-        ] = await Promise.all([
+        const results = await Promise.allSettled([
           listAssets({ status: "Available", maxResults: 1000 }),
           listAssets({ status: "Allocated", maxResults: 1000 }),
           listAssets({ status: "UnderMaintenance", maxResults: 1000 }),
@@ -39,6 +30,19 @@ export default function DashboardOverview({ onNavigate }) {
           getActiveAllocations(),
           getRecentActivity(6),
         ]);
+
+        const safeData = results.map(r => r.status === 'fulfilled' ? r.value : []);
+
+        const [
+          availableAssets,
+          allocatedAssets,
+          maintenanceAssets,
+          activeBookingsList,
+          pendingTransfersList,
+          overdueList,
+          activeAllocations,
+          recentActivityList,
+        ] = safeData;
 
         const upcomingReturnsCount = activeAllocations.filter((a) => {
           if (!a.expectedReturnDate) return false;
