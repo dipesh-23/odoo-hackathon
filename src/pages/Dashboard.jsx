@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
+import AssetsDirectory from "./AssetsDirectory";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, userProfile, logout } = useAuth();
@@ -58,8 +59,9 @@ export default function Dashboard({ onLogout }) {
 
           {/* Page Content */}
           <div className="page-content">
-            {activePage === "org-setup" && currentRole === "Admin" && <OrganizationSetup />}
-            {((activePage === "org-setup" && currentRole !== "Admin") || activePage !== "org-setup") && (
+            {activePage === "org-setup" && <OrganizationSetup />}
+            {activePage === "assets" && <AssetsDirectory />}
+            {activePage !== "org-setup" && activePage !== "assets" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
