@@ -115,31 +115,39 @@ export async function getAssetsNearingRetirement() {
 
 /**
  * Fetches discrepancy reports for all closed audit cycles.
- * Avoids collectionGroup to prevent requiring a custom index.
+ * Avoids collectionGroup and orderBy to prevent requiring a custom composite index.
  */
 export async function getAuditDiscrepancyReports() {
   const q = query(
     collection(db, "auditCycles"),
-    where("status", "==", "Closed"),
-    orderBy("closedAt", "desc"),
-    limit(10)
+    where("status", "==", "Closed")
   );
 
   const snap = await getDocs(q);
   if (snap.empty) return [];
 
+  const cycles = [];
+  for (const doc of snap.docs) {
+    cycles.push({ id: doc.id, ...doc.data() });
+  }
+  
+  // Sort descending locally
+  cycles.sort((a, b) => {
+    const timeA = a.closedAt?.toDate ? a.closedAt.toDate().getTime() : 0;
+    const timeB = b.closedAt?.toDate ? b.closedAt.toDate().getTime() : 0;
+    return timeB - timeA;
+  });
+
   const reports = [];
-  for (const cycleDoc of snap.docs) {
-    const cycleData = cycleDoc.data();
-    
+  for (const cycleData of cycles.slice(0, 10)) {
     // Fetch the summary doc for this cycle
-    const summaryRef = doc(db, "auditCycles", cycleDoc.id, "discrepancyReport", "summary");
+    const summaryRef = doc(db, "auditCycles", cycleData.id, "discrepancyReport", "summary");
     const summarySnap = await getDoc(summaryRef);
     
     if (summarySnap.exists()) {
       const summaryData = summarySnap.data();
       reports.push({
-        id: cycleDoc.id,
+        id: cycleData.id,
         scopeType: cycleData.scopeType || "Audit",
         scopeValue: cycleData.scopeValue || cycleData.scopeType || "All",
         closedAt: cycleData.closedAt?.toDate ? cycleData.closedAt.toDate() : new Date(),

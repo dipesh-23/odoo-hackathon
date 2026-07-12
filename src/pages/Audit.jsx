@@ -376,7 +376,12 @@ export default function Audit() {
             </button>
           </div>
           <div id="discrepancy-report-details" style={{display: 'none', marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px'}}>
-            <strong>Flagged Asset IDs:</strong> {discrepancyReport.flaggedAssetIds?.join(", ") || "None"}
+            <strong>Flagged Assets:</strong> {
+              discrepancyReport.flaggedAssetIds?.map(id => {
+                const asset = expectedAssets.find(a => a.id === id);
+                return asset ? (asset.tag || asset.name || id) : id;
+              }).join(", ") || "None"
+            }
             <p style={{marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)'}}>
               These assets have been automatically marked as 'Lost' or 'Damaged' in the system. Check the table below for full verification details.
             </p>
