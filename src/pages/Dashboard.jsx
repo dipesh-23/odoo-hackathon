@@ -10,8 +10,6 @@ import Reports from "./Reports";
 import Notifications from "./Notifications";
 import AssetsDirectory from "./AssetsDirectory";
 import AllocationTransfer from "./AllocationTransfer";
-import ResourceBooking from "./ResourceBooking";
-import Maintenance from "./Maintenance";
 import { canManageOrg, canRegisterAsset, canViewReports, canManageAudit } from "../utils/rbac";
 
 // Maps each role to its home/default page
@@ -105,7 +103,8 @@ export default function Dashboard({ onLogout }) {
             {activePage === "reports" && <Reports />}
             {activePage === "notifications" && <Notifications />}
             {activePage === "assets" && <AssetsDirectory />}
-            {activePage !== "dashboard" && activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "assets" && activePage !== "maintenance" && activePage !== "audit" && activePage !== "reports" && activePage !== "notifications" && (
+            {activePage === "allocation" && <AllocationTransfer />}
+            {/* {activePage !== "dashboard" && activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "assets" && activePage !== "maintenance" && activePage !== "audit" && activePage !== "reports" && activePage !== "notifications" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
@@ -115,7 +114,7 @@ export default function Dashboard({ onLogout }) {
                 <h2>Coming Soon</h2>
                 <p>This section is under development. Check back soon!</p>
               </div>
-            )}
+            )} */}
           </div>
         </main>
       </div>

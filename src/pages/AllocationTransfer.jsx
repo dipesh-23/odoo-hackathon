@@ -511,7 +511,7 @@ export default function AllocationTransfer() {
   const [error,          setError]           = useState(null);
 
   // Tab: "all" | "active" | "overdue" | "transfers"
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("all");
 
   // Modals
   const [showAllocate,         setShowAllocate]         = useState(false);
