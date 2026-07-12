@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { collection, query, where, onSnapshot, getDocs, doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +20,8 @@ export default function ResourceBooking() {
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState(null);
 
   // Fetch assets
   const fetchAssets = async () => {
@@ -217,17 +220,25 @@ export default function ResourceBooking() {
     }
   };
 
-  const handleDeleteBooking = async (e, bookingId) => {
+  const handleDeleteBooking = (e, bookingId) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this booking?")) return;
+    setBookingToDelete(bookingId);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteBooking = async () => {
+    if (!bookingToDelete) return;
     try {
-      await deleteBooking(bookingId);
+      await deleteBooking(bookingToDelete);
       setToastMsg("Booking deleted!");
       setTimeout(() => setToastMsg(""), 3000);
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || "Failed to delete booking");
       setTimeout(() => setErrorMsg(""), 3000);
+    } finally {
+      setDeleteModalOpen(false);
+      setBookingToDelete(null);
     }
   };
 
@@ -396,6 +407,35 @@ export default function ResourceBooking() {
           <button className="book-cancel-btn" onClick={handleClearSelection}>Cancel</button>
         )}
       </div>
+
+      {deleteModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => { setDeleteModalOpen(false); setBookingToDelete(null); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button type="button" className="modal-close" onClick={() => { setDeleteModalOpen(false); setBookingToDelete(null); }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: 0 }}>
+                Are you sure you want to delete this booking? This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-outline modal-cancel" onClick={() => { setDeleteModalOpen(false); setBookingToDelete(null); }}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary modal-confirm" style={{ backgroundColor: "#ef4444", borderColor: "#ef4444", color: "#fff" }} onClick={confirmDeleteBooking}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

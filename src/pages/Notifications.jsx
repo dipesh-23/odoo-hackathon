@@ -52,13 +52,18 @@ export default function Notifications() {
       constraints.push(where("category", "==", categoryFilter));
     }
     
-    // Note: requires composite index on (userId, category, createdAt desc)
-    constraints.push(orderBy("createdAt", "desc"));
-    
     const q = query(collection(db, "notifications"), ...constraints);
     
     const unsubscribe = onSnapshot(q, (snap) => {
       const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // Sort client-side to avoid requiring multiple composite indexes in Firestore
+      notifs.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+        return timeB - timeA;
+      });
+      
       setNotifications(notifs);
       setIsLoading(false);
     }, (error) => {

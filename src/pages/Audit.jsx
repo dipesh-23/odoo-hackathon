@@ -3,7 +3,8 @@ import { collection, query, where, onSnapshot, getDocs } from "firebase/firestor
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { listAuditCycles, addAssetCheck, closeAuditCycle, getDiscrepancyReport, createAuditCycle } from "../services/auditService";
-import { getUserProfile } from "../services/userService";
+import { getUserProfile, getActiveEmployees } from "../services/userService";
+import { listDepartments } from "../services/departmentService";
 
 export default function Audit() {
   const { currentUser } = useAuth();
@@ -19,9 +20,31 @@ export default function Audit() {
   const [toastMsg, setToastMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    scopeType: "Department",
+    scopeValue: "",
+    startDate: "",
+    endDate: "",
+    auditorUserIds: []
+  });
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
   useEffect(() => {
     loadActiveCycle();
+    loadOptions();
   }, []);
+
+  const loadOptions = async () => {
+    try {
+      const [depts, emps] = await Promise.all([listDepartments(), getActiveEmployees()]);
+      setDepartments(depts);
+      setEmployees(emps);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadActiveCycle = async () => {
     try {
@@ -133,26 +156,162 @@ export default function Audit() {
     }
   };
 
-  const handleSeedTestAudit = async () => {
+  const handleToggleAuditor = (uid) => {
+    setCreateForm(prev => {
+      const exists = prev.auditorUserIds.includes(uid);
+      return {
+        ...prev,
+        auditorUserIds: exists 
+          ? prev.auditorUserIds.filter(id => id !== uid)
+          : [...prev.auditorUserIds, uid]
+      };
+    });
+  };
+
+  const handleCreateAudit = async (e) => {
+    e.preventDefault();
+    if (!createForm.scopeValue || !createForm.startDate || !createForm.endDate) {
+       setErrorMsg("Please fill in all fields.");
+       setTimeout(() => setErrorMsg(""), 3000);
+       return;
+    }
+    if (createForm.auditorUserIds.length === 0) {
+       setErrorMsg("Please select at least one auditor.");
+       setTimeout(() => setErrorMsg(""), 3000);
+       return;
+    }
+    
     try {
       setIsLoading(true);
       await createAuditCycle({
-        scopeType: "Location",
-        scopeValue: "Headquarters",
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 days
-        auditorUserIds: [currentUser.uid]
+        scopeType: createForm.scopeType,
+        scopeValue: createForm.scopeValue,
+        startDate: new Date(createForm.startDate),
+        endDate: new Date(createForm.endDate),
+        auditorUserIds: createForm.auditorUserIds
       }, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email });
       
-      setToastMsg("Test audit cycle created!");
+      setToastMsg("Audit cycle created successfully!");
       setTimeout(() => setToastMsg(""), 3000);
+      setShowCreateModal(false);
       loadActiveCycle();
     } catch (err) {
       console.error(err);
-      setErrorMsg("Failed to create test audit.");
+      setErrorMsg("Failed to create audit cycle.");
+      setTimeout(() => setErrorMsg(""), 3000);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const renderCreateModal = () => {
+    if (!showCreateModal) return null;
+    return (
+      <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+        <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={handleCreateAudit}>
+          <div className="modal-header">
+            <h2>Start New Audit Cycle</h2>
+            <button type="button" className="modal-close" onClick={() => setShowCreateModal(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">Scope Type</label>
+              <div className="modal-status-toggle" style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                <button
+                  type="button"
+                  className={`status-toggle-btn ${createForm.scopeType === "Department" ? "active" : ""}`}
+                  onClick={() => setCreateForm({ ...createForm, scopeType: "Department", scopeValue: "" })}
+                >
+                  Department
+                </button>
+                <button
+                  type="button"
+                  className={`status-toggle-btn ${createForm.scopeType === "Location" ? "active" : ""}`}
+                  onClick={() => setCreateForm({ ...createForm, scopeType: "Location", scopeValue: "" })}
+                >
+                  Location
+                </button>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">{createForm.scopeType} Value</label>
+              {createForm.scopeType === "Department" ? (
+                <select 
+                  className="form-input form-select"
+                  value={createForm.scopeValue}
+                  onChange={(e) => setCreateForm({...createForm, scopeValue: e.target.value})}
+                  required
+                >
+                  <option value="">Select Department...</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="form-input"
+                  placeholder="e.g. Headquarters"
+                  value={createForm.scopeValue}
+                  onChange={(e) => setCreateForm({...createForm, scopeValue: e.target.value})}
+                  required
+                />
+              )}
+            </div>
+            
+            <div style={{display: 'flex', gap: '16px'}}>
+              <div className="form-group" style={{flex: 1}}>
+                <label className="form-label">Start Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={createForm.startDate}
+                  onChange={(e) => setCreateForm({...createForm, startDate: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{flex: 1}}>
+                <label className="form-label">End Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={createForm.endDate}
+                  onChange={(e) => setCreateForm({...createForm, endDate: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Assign Auditors</label>
+              <div className="multi-select-container" style={{maxHeight: '120px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '8px', background: 'var(--background)'}}>
+                {employees.map(emp => (
+                  <label key={emp.id} style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', cursor: 'pointer', color: 'var(--text-primary)'}}>
+                    <input 
+                      type="checkbox"
+                      checked={createForm.auditorUserIds.includes(emp.id)}
+                      onChange={() => handleToggleAuditor(emp.id)}
+                    />
+                    {emp.name || emp.email}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="modal-footer">
+            <button type="button" className="btn-outline modal-cancel" onClick={() => setShowCreateModal(false)}>Cancel</button>
+            <button type="submit" className="btn-primary modal-confirm" disabled={isLoading}>
+              {isLoading ? "Starting..." : "Start Audit"}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -167,10 +326,11 @@ export default function Audit() {
         </div>
         <div className="empty-state">
           <p style={{marginBottom: '20px'}}>No audit cycles found.</p>
-          <button className="btn-primary" onClick={handleSeedTestAudit}>
-            Create Test Audit Cycle
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            Start New Audit Cycle
           </button>
         </div>
+        {renderCreateModal()}
       </div>
     );
   }
@@ -267,13 +427,15 @@ export default function Audit() {
         {isClosed && (
           <button 
             className="btn-secondary" 
-            onClick={handleSeedTestAudit}
+            onClick={() => setShowCreateModal(true)}
             style={{ width: '100%', maxWidth: '300px' }}
           >
-            Start New Test Audit
+            Start New Audit Cycle
           </button>
         )}
       </div>
+
+      {renderCreateModal()}
     </div>
   );
 }

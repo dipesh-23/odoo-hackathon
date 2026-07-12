@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import DashboardOverview from "../components/DashboardOverview";
@@ -45,6 +47,36 @@ export default function Dashboard({ onLogout }) {
 
   const defaultPage = getDefaultPage(currentRole);
   const [activePage, setActivePage] = useState(defaultPage);
+
+  // Global Maintenance System Notifications
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    let isInitialLoad = true;
+    const q = collection(db, "maintenanceRequests");
+    const unsubscribe = onSnapshot(q, (snap) => {
+      if (!isInitialLoad && "Notification" in window && Notification.permission === "granted") {
+        snap.docChanges().forEach(change => {
+          if (change.type === "added") {
+            const data = change.doc.data();
+            new Notification("New Maintenance Request", {
+              body: `Asset: ${data.assetName || 'Unknown'}\nStatus: ${data.status}`
+            });
+          } else if (change.type === "modified") {
+            const data = change.doc.data();
+            new Notification("Maintenance Request Updated", {
+              body: `Asset: ${data.assetName || 'Unknown'}\nStatus: ${data.status}`
+            });
+          }
+        });
+      }
+      isInitialLoad = false;
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Guard: if someone tries to navigate to a forbidden page, bounce them back
   function handleNavigate(page) {
