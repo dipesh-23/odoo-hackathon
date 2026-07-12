@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import SpotlightCard from "../components/SpotlightCard";
+import Sidebar from "../components/Sidebar";
+import OrganizationSetup from "./OrganizationSetup";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, logout } = useAuth();
+  const [activePage, setActivePage] = useState("org-setup");
 
   const handleLogout = async () => {
     await logout();
@@ -10,50 +13,62 @@ export default function Dashboard({ onLogout }) {
   };
 
   return (
-    <div className="dashboard-bg">
-      {/* Video Background */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="background-video"
-      >
-        <source src="https://storage.googleapis.com/gweb-gemini-cdn/gemini/uploads/89e9004d716a7803fc7c9aab18c985af783f5a36.mp4" type="video/mp4" />
-      </video>
+    <div className="app-shell">
+      <div className="app-window">
+        {/* Sidebar */}
+        <Sidebar activePage={activePage} onNavigate={setActivePage} />
 
-      {/* Grid Overlay */}
-      <div className="background-overlay" />
+        {/* Main Content */}
+        <main className="main-content">
+          {/* Top Bar */}
+          <header className="top-bar">
+            <div className="top-bar-left">
+              <h2 className="top-bar-page-title">
+                {activePage === "org-setup" ? "Organization Setup" :
+                  activePage === "dashboard" ? "Dashboard" :
+                    activePage === "assets" ? "Assets" :
+                      activePage === "allocation" ? "Allocation & Transfer" :
+                        activePage === "resource-booking" ? "Resource Booking" :
+                          activePage === "maintenance" ? "Maintenance" :
+                            activePage === "audit" ? "Audit" :
+                              activePage === "reports" ? "Reports" :
+                                activePage === "notifications" ? "Notifications" : ""}
+              </h2>
+            </div>
+            <div className="top-bar-right">
+              <div className="top-bar-user">
+                <div className="top-bar-avatar">
+                  {currentUser?.email?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <span className="top-bar-email">{currentUser?.email}</span>
+              </div>
+              <button id="topbar-logout-btn" className="top-bar-logout" onClick={handleLogout}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sign Out
+              </button>
+            </div>
+          </header>
 
-      {/* Aurora blobs */}
-      <div className="aurora-blob aurora-blob-1" />
-      <div className="aurora-blob aurora-blob-2" />
-
-      <SpotlightCard className="dashboard-card">
-        <div className="dashboard-header">
-          <div className="af-logo">
-            <span>AF</span>
+          {/* Page Content */}
+          <div className="page-content">
+            {activePage === "org-setup" && <OrganizationSetup />}
+            {activePage !== "org-setup" && (
+              <div className="coming-soon-card">
+                <div className="coming-soon-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <h2>Coming Soon</h2>
+                <p>This section is under development. Check back soon!</p>
+              </div>
+            )}
           </div>
-          <div>
-            <h1 className="dashboard-title">Welcome to AssetFlow</h1>
-            <p className="dashboard-email">{currentUser?.email}</p>
-          </div>
-        </div>
-
-        <div className="dashboard-body">
-          <div className="status-badge">
-            <span className="status-dot" />
-            Authenticated
-          </div>
-          <p className="dashboard-hint">
-            Your dashboard is being set up. More features coming soon.
-          </p>
-        </div>
-
-        <button id="logout-btn" className="btn-outline" onClick={handleLogout}>
-          Sign Out
-        </button>
-      </SpotlightCard>
+        </main>
+      </div>
     </div>
   );
 }
