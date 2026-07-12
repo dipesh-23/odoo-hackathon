@@ -16,6 +16,7 @@ export default function Maintenance() {
   const { currentUser } = useAuth();
   const [requests, setRequests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [confirmDrop, setConfirmDrop] = useState(null);
   const [assets, setAssets] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -140,8 +141,17 @@ export default function Maintenance() {
       return;
     }
 
-    // Reuse the exact same transaction logic
-    await handleAdvanceStatus(requestId, targetStatus);
+    setConfirmDrop({
+      requestId,
+      targetStatus,
+      targetLabel: COLUMNS.find(c => c.id === targetStatus)?.label || targetStatus
+    });
+  };
+
+  const handleConfirmDrop = async () => {
+    if (!confirmDrop) return;
+    await handleAdvanceStatus(confirmDrop.requestId, confirmDrop.targetStatus);
+    setConfirmDrop(null);
   };
 
   return (
@@ -258,6 +268,27 @@ export default function Maintenance() {
                   <button type="button" className="btn-outline" onClick={handleCloseModal}>Cancel</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDrop && (
+        <div className="custom-modal-overlay">
+          <div className="custom-modal-card spotlight-card" style={{ maxWidth: '400px' }}>
+            <div className="login-card-header-bar">Confirm Move</div>
+            <div className="login-card-content" style={{paddingTop: '20px', paddingBottom: '20px'}}>
+              <p style={{ margin: '0 0 24px 0', color: 'var(--text-muted)' }}>
+                Are you sure you want to move this request to <strong>{confirmDrop.targetLabel}</strong>?
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" className="btn-primary" onClick={handleConfirmDrop}>
+                  Confirm
+                </button>
+                <button type="button" className="btn-outline" onClick={() => setConfirmDrop(null)}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

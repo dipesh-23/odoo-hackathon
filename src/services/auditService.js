@@ -57,51 +57,83 @@ export async function addAssetCheck(auditCycleId, assetId, {
  */
 export async function closeAuditCycle(auditCycleId, actorUser) {
   const checksSnap = await getDocs(collection(db, "auditCycles", auditCycleId, "assetChecks"));
-  const batch = writeBatch(db);
-
+  
   let totalAssetsChecked = 0;
   let missingCount = 0;
   let damagedCount = 0;
   const flaggedAssetIds = [];
 
+  const flaggedChecks = [];
   checksSnap.docs.forEach((d) => {
     totalAssetsChecked++;
     const check = d.data();
-    const assetId = d.id;
+    if (check.result === "Missing" || check.result === "Damaged") {
+      flaggedChecks.push({ id: d.id, ...check });
+    }
+  });
+
+  // Pre-fetch flagged assets defensively to skip deleted ones
+  const verifiedFlagged = await Promise.all(
+    flaggedChecks.map(async (check) => {
+      const snap = await getDoc(doc(db, "assets", check.id));
+      return { check, exists: snap.exists() };
+    })
+  );
+
+  let batch = writeBatch(db);
+  let opCount = 0;
+  
+  const commitBatch = async () => {
+    if (opCount > 0) {
+      await batch.commit();
+      batch = writeBatch(db);
+      opCount = 0;
+    }
+  };
+
+  for (const { check, exists } of verifiedFlagged) {
+    if (!exists) continue; // Skip deleted assets safely
+    
+    if (opCount >= 450) await commitBatch();
 
     if (check.result === "Missing") {
       missingCount++;
-      flaggedAssetIds.push(assetId);
-      batch.update(doc(db, "assets", assetId), {
+      flaggedAssetIds.push(check.id);
+      batch.update(doc(db, "assets", check.id), {
         status: "Lost", updatedAt: serverTimestamp(),
       });
-      addAssetHistoryInBatch(batch, assetId, {
+      addAssetHistoryInBatch(batch, check.id, {
         type: "AuditFlag", refId: auditCycleId,
         description: "Marked as Lost during audit",
         actorUserId: actorUser.uid,
       });
+      opCount += 2;
     } else if (check.result === "Damaged") {
       damagedCount++;
-      flaggedAssetIds.push(assetId);
-      addAssetHistoryInBatch(batch, assetId, {
+      flaggedAssetIds.push(check.id);
+      addAssetHistoryInBatch(batch, check.id, {
         type: "AuditFlag", refId: auditCycleId,
         description: `Marked as Damaged during audit. Notes: ${check.notes || ""}`,
         actorUserId: actorUser.uid,
       });
+      opCount += 1;
     }
-  });
+  }
 
-  // Create discrepancy report
+  // Final cycle metadata writes
+  if (opCount >= 450) await commitBatch();
+
   const reportRef = doc(db, "auditCycles", auditCycleId, "discrepancyReport", "summary");
   batch.set(reportRef, {
     totalAssetsChecked, missingCount, damagedCount, flaggedAssetIds,
     generatedAt: serverTimestamp(),
   });
+  opCount += 1;
 
-  // Close cycle
   batch.update(doc(db, "auditCycles", auditCycleId), {
     status: "Closed", closedAt: serverTimestamp(),
   });
+  opCount += 1;
 
   addActivityLogInBatch(batch, {
     actorUserId: actorUser.uid, actorName: actorUser.name || "",
@@ -109,8 +141,9 @@ export async function closeAuditCycle(auditCycleId, actorUser) {
     targetDocId: auditCycleId,
     metadata: { totalAssetsChecked, missingCount, damagedCount },
   });
+  opCount += 1;
 
-  await batch.commit();
+  await commitBatch();
 
   return { totalAssetsChecked, missingCount, damagedCount };
 }

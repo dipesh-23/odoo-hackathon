@@ -4,6 +4,9 @@ import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
 import ResourceBooking from "./ResourceBooking";
 import Maintenance from "./Maintenance";
+import Audit from "./Audit";
+import Reports from "./Reports";
+import Notifications from "./Notifications";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, logout } = useAuth();
@@ -59,7 +62,10 @@ export default function Dashboard({ onLogout }) {
             {activePage === "org-setup" && <OrganizationSetup />}
             {activePage === "resource-booking" && <ResourceBooking />}
             {activePage === "maintenance" && <Maintenance />}
-            {activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "maintenance" && (
+            {activePage === "audit" && <Audit />}
+            {activePage === "reports" && <Reports />}
+            {activePage === "notifications" && <Notifications />}
+            {activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "maintenance" && activePage !== "audit" && activePage !== "reports" && activePage !== "notifications" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">

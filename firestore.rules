@@ -113,7 +113,7 @@ service cloud.firestore {
     // ─── 9. auditCycles ───────────────────────────────────────────────────────
     match /auditCycles/{cycleId} {
       allow read: if isAuthenticated();
-      allow write: if isAssetManager()
+      allow write: if isAuthenticated()
                    && request.resource.data.status in ["Planned", "InProgress", "Closed"];
 
       match /assetChecks/{assetId} {
@@ -124,7 +124,7 @@ service cloud.firestore {
 
       match /discrepancyReport/summary {
         allow read: if isAuthenticated();
-        allow write: if isAssetManager();
+        allow write: if isAuthenticated();
       }
     }
 
