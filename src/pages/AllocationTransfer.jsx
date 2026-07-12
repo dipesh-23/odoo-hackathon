@@ -13,6 +13,12 @@ import { listAssets } from "../services/assetService";
 import { listUsers } from "../services/userService";
 import { listDepartments } from "../services/departmentService";
 import { getAssetHistory } from "../services/assetService";
+import {
+  canDirectlyAllocate,
+  canApproveTransfer,
+  canReturnAsset,
+  scopeAllocations,
+} from "../utils/rbac";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(ts) {
@@ -218,12 +224,19 @@ function ReturnModal({ alloc, onClose, onConfirm, loading }) {
 }
 
 // ─── Transfer Request Modal ───────────────────────────────────────────────────
-function TransferRequestModal({ alloc, employees, departments, onClose, onConfirm, loading, currentUser }) {
-  const [form, setForm] = useState({ holderType: "Employee", holderId: "", reason: "" });
+function TransferRequestModal({ alloc, allAllocations = [], assets = [], employees, departments, onClose, onConfirm, loading, currentUser }) {
+  const isNewRequest = alloc?._new === true;
+  const [form, setForm] = useState({ assetAllocId: "", holderType: "Employee", holderId: "", reason: "" });
+
+  // When a new request (from header button), derive alloc from selected asset
+  const selectedAlloc = isNewRequest
+    ? allAllocations.find(a => a.id === form.assetAllocId)
+    : alloc;
+
   const holderOptions = form.holderType === "Employee"
-    ? employees.filter(e => e.id !== alloc.holderId)
+    ? employees.filter(e => e.id !== selectedAlloc?.holderId)
     : departments.filter(d => d.status === "Active");
-  const valid = form.holderId && form.reason.trim();
+  const valid = (isNewRequest ? form.assetAllocId : true) && form.holderId && form.reason.trim();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -233,11 +246,30 @@ function TransferRequestModal({ alloc, employees, departments, onClose, onConfir
           <button className="modal-close" onClick={onClose}><CloseIcon /></button>
         </div>
         <div className="modal-body">
-          <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 16 }}>
-            Asset <strong style={{ color: "#a78bfa" }}>{alloc.assetTag}</strong> is currently held by{" "}
-            <strong style={{ color: "var(--text-primary)" }}>{alloc.holderName}</strong>.
-            A transfer request will be sent for approval.
-          </p>
+          {isNewRequest ? (
+            <div className="form-group">
+              <label className="form-label">Select Asset to Request Transfer For *</label>
+              <select id="transfer-asset-select" className="form-input form-select"
+                value={form.assetAllocId}
+                onChange={e => setForm(f => ({ ...f, assetAllocId: e.target.value, holderId: "" }))}>
+                <option value="">Select an asset…</option>
+                {allAllocations.filter(a => a.status === "Active").map(a => {
+                  const asset = assets.find(x => x.id === a.assetId);
+                  return (
+                    <option key={a.id} value={a.id}>
+                      {a.assetTag}{asset ? ` — ${asset.name}` : ""} (held by {a.holderName})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          ) : (
+            <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 16 }}>
+              Asset <strong style={{ color: "#a78bfa" }}>{alloc.assetTag}</strong> is currently held by{" "}
+              <strong style={{ color: "var(--text-primary)" }}>{alloc.holderName}</strong>.
+              A transfer request will be sent for approval.
+            </p>
+          )}
           <div className="form-group">
             <label className="form-label">Transfer To</label>
             <div style={{ display: "flex", gap: 8 }}>
@@ -269,7 +301,11 @@ function TransferRequestModal({ alloc, employees, departments, onClose, onConfir
         <div className="modal-footer">
           <button className="btn-outline modal-cancel" onClick={onClose}>Cancel</button>
           <button id="confirm-transfer-request" className="btn-primary modal-confirm"
-            disabled={loading || !valid} onClick={() => onConfirm(form, holderOptions.find(h => h.id === form.holderId))}>
+            disabled={loading || !valid}
+            onClick={() => {
+              const resolvedAlloc = isNewRequest ? selectedAlloc : alloc;
+              onConfirm(form, holderOptions.find(h => h.id === form.holderId), resolvedAlloc);
+            }}>
             {loading ? <span className="spinner" /> : "Request Transfer"}
           </button>
         </div>
@@ -277,6 +313,7 @@ function TransferRequestModal({ alloc, employees, departments, onClose, onConfir
     </div>
   );
 }
+
 
 // ─── Approve Transfer Panel ───────────────────────────────────────────────────
 function TransferApprovalPanel({ alloc, employees, departments, onClose, onApprove, onReject, loading }) {
@@ -397,8 +434,8 @@ function TransferApprovalPanel({ alloc, employees, departments, onClose, onAppro
   );
 }
 
-// ─── Allocation Row Action Menu ───────────────────────────────────────────────
-function AllocActionMenu({ alloc, role, onReturn, onTransferRequest, onViewTransfer }) {
+// ─── Allocation Row Action Menu ────────────────────────────────────────────────────
+function AllocActionMenu({ alloc, role, currentUserId, onReturn, onTransferRequest, onViewTransfer }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -407,10 +444,18 @@ function AllocActionMenu({ alloc, role, onReturn, onTransferRequest, onViewTrans
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  const canApprove = ["Admin", "AssetManager", "DepartmentHead"].includes(role);
-  const canReturn  = ["Admin", "AssetManager"].includes(role);
-  const isActive   = alloc.status === "Active";
+  // Role-gated capabilities (from rbac.js)
+  const allowReturn  = canReturnAsset(role);
+  const allowApprove = canApproveTransfer(role);
+  // Anyone can request a transfer on allocations they can see
+  const allowRequest = true;
+
+  const isActive          = alloc.status === "Active";
   const isTransferPending = alloc.status === "TransferRequested";
+
+  const hasAnyAction = (isActive && (allowReturn || allowRequest)) ||
+                       (isTransferPending && allowApprove);
+  if (!hasAnyAction) return null;
 
   return (
     <div className="action-menu-wrap" ref={ref}>
@@ -421,19 +466,19 @@ function AllocActionMenu({ alloc, role, onReturn, onTransferRequest, onViewTrans
       </button>
       {open && (
         <div className="action-menu-dropdown">
-          {isActive && canReturn && (
+          {isActive && allowReturn && (
             <button className="action-menu-item" onClick={e => { e.stopPropagation(); setOpen(false); onReturn(alloc); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-3.5" /></svg>
               Mark Returned
             </button>
           )}
-          {isActive && (
+          {isActive && allowRequest && (
             <button className="action-menu-item" onClick={e => { e.stopPropagation(); setOpen(false); onTransferRequest(alloc); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
               Request Transfer
             </button>
           )}
-          {isTransferPending && canApprove && (
+          {isTransferPending && allowApprove && (
             <button className="action-menu-item" onClick={e => { e.stopPropagation(); setOpen(false); onViewTransfer(alloc); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               Review Transfer
@@ -445,10 +490,13 @@ function AllocActionMenu({ alloc, role, onReturn, onTransferRequest, onViewTrans
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────────
 export default function AllocationTransfer() {
   const { currentUser, userProfile } = useAuth();
   const role = userProfile?.role || "Employee";
+
+  // Derived permission flags (from rbac.js)
+  const allowDirectAllocate = canDirectlyAllocate(role);
 
   const [allAllocations, setAllAllocations] = useState([]);
   const [assets,         setAssets]         = useState([]);
@@ -466,8 +514,6 @@ export default function AllocationTransfer() {
   const [returnAlloc,          setReturnAlloc]          = useState(null);
   const [transferReqAlloc,     setTransferReqAlloc]     = useState(null);
   const [transferApproveAlloc, setTransferApproveAlloc] = useState(null);
-
-  const canAllocate = ["Admin", "AssetManager"].includes(role);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -494,12 +540,9 @@ export default function AllocationTransfer() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Filtered tabs ─────────────────────────────────────────────────────────
-  const myAllocations = role === "Employee"
-    ? allAllocations.filter(a => a.holderId === currentUser?.uid)
-    : role === "DepartmentHead"
-    ? allAllocations.filter(a => a.departmentId === userProfile?.departmentId || a.holderId === currentUser?.uid)
-    : allAllocations;
+  // ── Filtered tabs ───────────────────────────────────────────────────────────────
+  // Uses rbac.js scoping: Admin/AssetManager/DeptHead see all; Employee sees only their own
+  const myAllocations = scopeAllocations(allAllocations, role, currentUser?.uid, userProfile?.departmentId);
 
   const tabData = {
     active:    myAllocations.filter(a => a.status === "Active" && !isOverdue(a)),
@@ -543,11 +586,14 @@ export default function AllocationTransfer() {
     finally { setModalLoading(false); }
   }
 
-  async function handleTransferRequest(form, selectedHolder) {
+  async function handleTransferRequest(form, selectedHolder, resolvedAlloc) {
     setModalLoading(true);
+    const targetAlloc = resolvedAlloc || transferReqAlloc;
     try {
-      await requestTransfer(transferReqAlloc.id, {
+      if (!targetAlloc?.id) { alert("Please select a valid asset to transfer."); return; }
+      await requestTransfer(targetAlloc.id, {
         requestedByUserId: currentUser.uid,
+        requestedByName: userProfile?.name || currentUser.email || "",
         requestedForUserId: form.holderId,
         reason: form.reason,
         newHolderType: form.holderType,
@@ -600,12 +646,23 @@ export default function AllocationTransfer() {
             {loading ? "Loading…" : `${myAllocations.filter(a => a.status === "Active").length} active · ${tabData.overdue.length} overdue · ${tabData.transfers.length} pending transfers`}
           </p>
         </div>
-        <button id="allocate-asset-btn" className="org-add-btn" onClick={() => setShowAllocate(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          {canAllocate ? "Allocate Asset" : "Request Asset"}
-        </button>
+        {/* Admin/AssetManager: direct Allocate; DeptHead/Employee: open Transfer Request */}
+        {allowDirectAllocate ? (
+          <button id="allocate-asset-btn" className="org-add-btn" onClick={() => setShowAllocate(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Allocate Asset
+          </button>
+        ) : (
+          <button id="request-transfer-btn" className="org-add-btn" onClick={() => setTransferReqAlloc({ id: null, assetTag: "", holderName: "", _new: true })}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+            Request Transfer
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -696,6 +753,7 @@ export default function AllocationTransfer() {
                         <AllocActionMenu
                           alloc={alloc}
                           role={role}
+                          currentUserId={currentUser?.uid}
                           onReturn={a => setReturnAlloc(a)}
                           onTransferRequest={a => setTransferReqAlloc(a)}
                           onViewTransfer={a => setTransferApproveAlloc(a)}
@@ -716,8 +774,8 @@ export default function AllocationTransfer() {
         )}
       </div>
 
-      {/* Modals */}
-      {showAllocate && (
+      {/* Modals — gated by role */}
+      {showAllocate && allowDirectAllocate && (
         <AllocateModal assets={assets} employees={employees} departments={departments} allAllocations={allAllocations}
           onClose={() => setShowAllocate(false)}
           onSaveAllocation={handleAllocate}
@@ -744,9 +802,16 @@ export default function AllocationTransfer() {
           onClose={() => setReturnAlloc(null)} onConfirm={handleReturn} loading={modalLoading} />
       )}
       {transferReqAlloc && (
-        <TransferRequestModal alloc={transferReqAlloc} employees={employees} departments={departments}
-          onClose={() => setTransferReqAlloc(null)} onConfirm={handleTransferRequest}
-          loading={modalLoading} currentUser={currentUser} />
+        <TransferRequestModal
+          alloc={transferReqAlloc}
+          allAllocations={allAllocations}
+          assets={assets}
+          employees={employees}
+          departments={departments}
+          onClose={() => setTransferReqAlloc(null)}
+          onConfirm={handleTransferRequest}
+          loading={modalLoading}
+          currentUser={currentUser} />
       )}
       {transferApproveAlloc && (
         <TransferApprovalPanel alloc={transferApproveAlloc} employees={employees} departments={departments}
