@@ -90,14 +90,12 @@ export function changeEmployeeCountInBatch(batchOrTxn, departmentId, delta) {
  * List all departments (optionally filtered by status).
  */
 export async function listDepartments({ status = null } = {}) {
-  const constraints = [];
-  if (status) {
-    constraints.push(where("status", "==", status));
-  }
-
-  const q = query(collection(db, "departments"), ...constraints);
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Fetch all docs and filter client-side to avoid composite index requirements
+  const snap = await getDocs(collection(db, "departments"));
+  let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (status) docs = docs.filter((d) => d.status === status);
+  docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  return docs;
 }
 
 /**

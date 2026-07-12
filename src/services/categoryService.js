@@ -56,15 +56,12 @@ export async function updateCategory(categoryId, data) {
  * List categories (optionally filtered by status).
  */
 export async function listCategories({ status = null } = {}) {
-  const constraints = [];
-  if (status) {
-    constraints.push(where("status", "==", status));
-  }
-  constraints.push(orderBy("name", "asc"));
-
-  const q = query(collection(db, "categories"), ...constraints);
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Fetch ALL docs — no server-side where/orderBy so no indexes are needed
+  const snap = await getDocs(collection(db, "categories"));
+  let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (status) docs = docs.filter((d) => d.status === status);
+  docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  return docs;
 }
 
 /**

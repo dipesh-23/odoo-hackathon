@@ -20,11 +20,11 @@ import { addAssetHistoryInBatch } from "./assetService";
  * Raise a new maintenance request.
  */
 export async function createMaintenanceRequest({
-  assetId, assetTag, raisedByUserId, issueDescription,
+  assetId, assetTag, raisedByUserId, raisedByName = "", issueDescription,
   priority = "Medium", photoUrl = null,
 }, actorUser) {
   const ref = await addDoc(collection(db, "maintenanceRequests"), {
-    assetId, assetTag, raisedByUserId, issueDescription,
+    assetId, assetTag, raisedByUserId, raisedByName, issueDescription,
     priority, photoUrl, status: "Pending",
     approvedByUserId: null, technicianName: null,
     raisedAt: serverTimestamp(), resolvedAt: null, resolutionNotes: null,
