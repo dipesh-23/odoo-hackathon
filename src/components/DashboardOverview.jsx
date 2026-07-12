@@ -69,51 +69,53 @@ export default function DashboardOverview({ onNavigate }) {
   }, []);
 
   const formatActivity = (activity) => {
-    const { action, actorName, metadata } = activity;
+    const { action, actorName, metadata = {} } = activity;
+    const assetNamePart = metadata.assetName || metadata.categoryName || "Asset";
+    const assetTagPart = metadata.assetTag || "Unknown";
+    
     switch (action) {
       case "ASSET_ALLOCATED":
-        return `${metadata.assetTag || "Asset"} – allocated to ${
+        return `${assetNamePart} ${assetTagPart} – allocated to ${
           metadata.holderName || actorName
-        }`;
+        }${metadata.departmentName ? ` – ${metadata.departmentName}` : ""}`;
       case "ASSET_RETURNED":
-        return `${metadata.assetTag || "Asset"} – returned by ${actorName}`;
+        return `${assetNamePart} ${assetTagPart} – returned by ${actorName}`;
       case "BOOKING_CREATED": {
-        const start = metadata.startTime?.toDate
-          ? metadata.startTime.toDate()
-          : metadata.startTime
-          ? new Date(metadata.startTime)
-          : null;
-        const end = metadata.endTime?.toDate
-          ? metadata.endTime.toDate()
-          : metadata.endTime
-          ? new Date(metadata.endTime)
-          : null;
-        const timeStr =
-          start && end
-            ? `${start.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })} to ${end.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`
-            : "";
-        return `${metadata.resourceName || "Resource"} – booking confirmed${
-          timeStr ? ` – ${timeStr}` : ""
-        }`;
+        const start = metadata.startTime?.toDate ? metadata.startTime.toDate() : (metadata.startTime ? new Date(metadata.startTime) : null);
+        const end = metadata.endTime?.toDate ? metadata.endTime.toDate() : (metadata.endTime ? new Date(metadata.endTime) : null);
+        let timeStr = "";
+        if (start && end) {
+          const sTime = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          const eTime = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          timeStr = ` – ${sTime} to ${eTime}`;
+        }
+        return `${metadata.resourceName || "Resource"} – booking confirmed${timeStr}`;
       }
       case "TRANSFER_APPROVED":
-        return `${metadata.assetTag || "Asset"} – transfer approved to ${
-          metadata.to || actorName
-        }`;
+        return `Transfer approved: ${assetTagPart} to ${metadata.departmentName || metadata.to || actorName}`;
       case "ASSET_CREATED":
-        return `${metadata.assetTag || "Asset"} (${
-          metadata.name || ""
-        }) – registered`;
-      case "MAINTENANCE_RESOLVED":
-        return `${metadata.assetTag || "Asset"} – maintenance resolved`;
-      default:
-        return `${action.replace(/_/g, " ").toLowerCase()} – ${actorName}`;
+        return `New asset registered: ${assetTagPart}`;
+      case "AUDIT_CLOSED": {
+        const flagged = (metadata.missingCount || 0) + (metadata.damagedCount || 0);
+        const scope = metadata.scopeValue || "Audit";
+        return `${scope} closed – ${flagged} ${flagged === 1 ? "asset" : "assets"} flagged`;
+      }
+      case "OVERDUE_RETURN_FLAGGED":
+        return `${assetTagPart} flagged overdue`;
+      case "MAINTENANCE_RAISED":
+        return `New maintenance request raised for ${assetTagPart}`;
+      case "MAINTENANCE_APPROVED":
+        return `Maintenance request ${assetTagPart} approved`;
+      default: {
+        if (action && action.startsWith("MAINTENANCE_")) {
+          const status = (action.split("_")[1] || "").toLowerCase();
+          let statusText = status;
+          if (status === "technicianassigned") statusText = "technician assigned";
+          else if (status === "inprogress") statusText = "in progress";
+          return `${assetNamePart} ${assetTagPart} – maintenance ${statusText}`;
+        }
+        return `${(action || "").replace(/_/g, " ").toLowerCase()} – ${actorName}`;
+      }
     }
   };
 

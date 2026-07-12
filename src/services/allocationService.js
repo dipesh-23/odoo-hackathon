@@ -73,7 +73,14 @@ export async function allocateAsset({
       actorUserId: actorUser.uid, actorName: actorUser.name || "",
       action: "ASSET_ALLOCATED", targetCollection: "allocations",
       targetDocId: allocationRef.id,
-      metadata: { assetId, assetTag, holderId, holderType, holderName },
+      metadata: { 
+        assetId, 
+        assetTag: assetTag || assetSnap.data().assetTag, 
+        assetName: assetSnap.data().name || "",
+        categoryName: assetSnap.data().categoryName || "",
+        holderId, holderType, holderName,
+        departmentName: departmentName || "",
+      },
     });
   });
   return { id: allocationRef.id };
@@ -168,9 +175,8 @@ export async function approveTransfer(allocationId, requestId, approvedByUserId,
     }
     addActivityLogInBatch(txn, {
       actorUserId: actorUser.uid, actorName: actorUser.name || "",
-      action: "TRANSFER_APPROVED", targetCollection: "allocations",
-      targetDocId: newAllocRef.id,
-      metadata: { assetId: d.assetId, from: d.holderName, to: newHolder.holderName },
+      action: "TRANSFER_APPROVED", targetCollection: "allocations", targetDocId: allocationId,
+      metadata: { assetId: d.assetId, assetTag: d.assetTag, from: d.holderName, to: newHolder.name, departmentName: newHolder.departmentName || newHolder.name },
     });
   });
   return { id: newAllocRef.id };
