@@ -143,6 +143,8 @@ export async function createAsset(data, actorUser) {
     currentHolderId: null,
     currentHolderName: null,
     currentHolderType: null,
+    departmentId: null,
+    departmentName: null,
     qrCodeUrl,
     nextServiceDueDate: data.nextServiceDueDate || null,
     retirementThresholdYears: data.retirementThresholdYears || null,
