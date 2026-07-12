@@ -225,8 +225,10 @@ function ReturnModal({ alloc, onClose, onConfirm, loading }) {
 }
 
 // ─── Transfer Request Modal ───────────────────────────────────────────────────
-function TransferRequestModal({ alloc, allAllocations = [], assets = [], employees, departments, onClose, onConfirm, loading, currentUser }) {
+function TransferRequestModal({ alloc, allAllocations = [], assets = [], employees, departments, role, onClose, onConfirm, loading, currentUser }) {
   const isNewRequest = alloc?._new === true;
+  // Employees can only transfer to another Employee, not a Department
+  const allowedHolderTypes = role === "Employee" ? ["Employee"] : ["Employee", "Department"];
   const [form, setForm] = useState({ assetAllocId: "", holderType: "Employee", holderId: "", reason: "" });
 
   // When a new request (from header button), derive alloc from selected asset
@@ -274,7 +276,7 @@ function TransferRequestModal({ alloc, allAllocations = [], assets = [], employe
           <div className="form-group">
             <label className="form-label">Transfer To</label>
             <div style={{ display: "flex", gap: 8 }}>
-              {["Employee", "Department"].map(t => (
+              {allowedHolderTypes.map(t => (
                 <button key={t} type="button"
                   className={`status-toggle-btn ${form.holderType === t ? "active" : ""}`}
                   onClick={() => setForm(f => ({ ...f, holderType: t, holderId: "" }))}>
@@ -811,6 +813,7 @@ export default function AllocationTransfer() {
           assets={assets}
           employees={employees}
           departments={departments}
+          role={role}
           onClose={() => setTransferReqAlloc(null)}
           onConfirm={handleTransferRequest}
           loading={modalLoading}
