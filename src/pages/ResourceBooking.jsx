@@ -18,6 +18,7 @@ export default function ResourceBooking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+  const [isDraggingSelection, setIsDraggingSelection] = useState(false);
 
   // Fetch assets
   const fetchAssets = async () => {
@@ -137,30 +138,44 @@ export default function ResourceBooking() {
     return hasConflict ? "conflict" : "clear";
   }, [selectionStart, selectionEnd, bookings, selectedDate]);
 
-  // Click handler for grid slots
-  const handleSlotClick = (hour) => {
+  // Drag to select logic
+  useEffect(() => {
+    const handleMouseUp = () => setIsDraggingSelection(false);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  const handleMouseDown = (hour) => {
     const startObj = getDateForHour(hour);
     const endObj = getDateForHour(hour + 1);
     const isBooked = bookings.some(b => b.startTime < endObj && b.endTime > startObj);
 
     if (selectionStart === null) {
-      if (isBooked) return; // Prevent starting selection on an already booked slot
+      if (isBooked) return;
       setSelectionStart(hour);
-      setSelectionEnd(hour + 1); // default 1 hr
+      setSelectionEnd(hour + 1);
+      setIsDraggingSelection(true);
     } else {
-      // If they click the start of a 1-hour selection, deselect it
+      // If clicking the start of a 1-hour selection, deselect it
       if (hour === selectionStart && selectionEnd === hour + 1) {
         handleClearSelection();
         return;
       }
-      // If we click again, we adjust the range or start over
-      if (hour >= selectionStart) {
-        setSelectionEnd(hour + 1);
-      } else {
-        if (isBooked) return; // Prevent selecting a booked slot when shifting start earlier
-        setSelectionStart(hour);
-        setSelectionEnd(hour + 1);
-      }
+      
+      // Otherwise, start a fresh drag selection
+      if (isBooked) return;
+      setSelectionStart(hour);
+      setSelectionEnd(hour + 1);
+      setIsDraggingSelection(true);
+    }
+  };
+
+  const handleMouseEnter = (hour) => {
+    if (!isDraggingSelection || selectionStart === null) return;
+    
+    // Only allow dragging down (expanding time)
+    if (hour >= selectionStart) {
+      setSelectionEnd(hour + 1);
     }
   };
 
@@ -265,7 +280,9 @@ export default function ResourceBooking() {
               <div 
                 key={hour} 
                 className="grid-row" 
-                onClick={() => handleSlotClick(hour)}
+                onMouseDown={() => handleMouseDown(hour)}
+                onMouseEnter={() => handleMouseEnter(hour)}
+                style={{ userSelect: 'none' }}
               >
                 <div className="time-label">{formatHour(hour)}</div>
                 <div className="grid-cell"></div>

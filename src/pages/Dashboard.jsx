@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
 import ResourceBooking from "./ResourceBooking";
+import Maintenance from "./Maintenance";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, logout } = useAuth();
@@ -57,7 +58,8 @@ export default function Dashboard({ onLogout }) {
           <div className="page-content">
             {activePage === "org-setup" && <OrganizationSetup />}
             {activePage === "resource-booking" && <ResourceBooking />}
-            {activePage !== "org-setup" && activePage !== "resource-booking" && (
+            {activePage === "maintenance" && <Maintenance />}
+            {activePage !== "org-setup" && activePage !== "resource-booking" && activePage !== "maintenance" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
