@@ -4,8 +4,12 @@ import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
 
 export default function Dashboard({ onLogout }) {
-  const { currentUser, logout } = useAuth();
-  const [activePage, setActivePage] = useState("org-setup");
+  const { currentUser, userProfile, logout } = useAuth();
+  const currentRole = userProfile?.role || "Employee";
+
+  // Default to org-setup for Admin, dashboard for others
+  const defaultPage = currentRole === "Admin" ? "org-setup" : "dashboard";
+  const [activePage, setActivePage] = useState(defaultPage);
 
   const handleLogout = async () => {
     await logout();
@@ -54,8 +58,8 @@ export default function Dashboard({ onLogout }) {
 
           {/* Page Content */}
           <div className="page-content">
-            {activePage === "org-setup" && <OrganizationSetup />}
-            {activePage !== "org-setup" && (
+            {activePage === "org-setup" && currentRole === "Admin" && <OrganizationSetup />}
+            {((activePage === "org-setup" && currentRole !== "Admin") || activePage !== "org-setup") && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
