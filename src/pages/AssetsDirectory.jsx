@@ -155,6 +155,7 @@ function AssetModal({ mode, asset, categories, departments, onClose, onSave, loa
     name: "", categoryId: "", categoryName: "",
     serialNumber: "", acquisitionDate: "", acquisitionCost: "",
     condition: "New", location: "", isBookable: false,
+    nextServiceDueDate: "", retirementThresholdYears: "", documentUrls: "",
   };
 
   const [form, setForm] = useState(isEdit ? {
@@ -172,6 +173,13 @@ function AssetModal({ mode, asset, categories, departments, onClose, onSave, loa
     location:        asset.location        || "",
     isBookable:      asset.isBookable      || false,
     status:          asset.status          || "Available",
+    nextServiceDueDate: asset.nextServiceDueDate
+      ? (asset.nextServiceDueDate.toDate
+          ? asset.nextServiceDueDate.toDate().toISOString().split("T")[0]
+          : String(asset.nextServiceDueDate))
+      : "",
+    retirementThresholdYears: asset.retirementThresholdYears || "",
+    documentUrls: asset.documentUrls ? asset.documentUrls.join(', ') : "",
   } : blank);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -274,6 +282,27 @@ function AssetModal({ mode, asset, categories, departments, onClose, onSave, loa
               <label className="form-label">Photo URL <span className="form-label-hint">(paste link or leave blank)</span></label>
               <input id="asset-photo-input" className="form-input" placeholder="https://…"
                 value={form.photoUrl || ""} onChange={e => set("photoUrl", e.target.value)} />
+            </div>
+
+            {/* Next Service Due Date */}
+            <div className="form-group">
+              <label className="form-label">Next Service Due Date</label>
+              <input id="asset-next-service-input" className="form-input" type="date"
+                value={form.nextServiceDueDate} onChange={e => set("nextServiceDueDate", e.target.value)} />
+            </div>
+
+            {/* Retirement Threshold */}
+            <div className="form-group">
+              <label className="form-label">Retirement Threshold (Years)</label>
+              <input id="asset-retirement-input" className="form-input" type="number" placeholder="e.g. 5"
+                value={form.retirementThresholdYears} onChange={e => set("retirementThresholdYears", e.target.value)} />
+            </div>
+
+            {/* Document URLs */}
+            <div className="form-group asset-modal-full">
+              <label className="form-label">Document URLs <span className="form-label-hint">(comma-separated)</span></label>
+              <input id="asset-documents-input" className="form-input" placeholder="e.g. https://doc1.com, https://doc2.com"
+                value={form.documentUrls} onChange={e => set("documentUrls", e.target.value)} />
             </div>
 
           </div>
@@ -417,6 +446,7 @@ function AssetDetailPanel({ asset, onClose, onEdit }) {
                 <div className="detail-fields-grid">
                   <DetailField label="Acquisition Date" value={fmt(asset.acquisitionDate)} />
                   <DetailField label="Acquisition Cost" value={asset.acquisitionCost ? `₹${Number(asset.acquisitionCost).toLocaleString("en-IN")}` : undefined} />
+                  <DetailField label="Retirement Threshold" value={asset.retirementThresholdYears ? `${asset.retirementThresholdYears} years` : undefined} />
                 </div>
               </div>
 
@@ -445,6 +475,20 @@ function AssetDetailPanel({ asset, onClose, onEdit }) {
                   <div className="detail-qr-wrap">
                     <img src={asset.qrCodeUrl} alt={`QR for ${asset.assetTag}`} className="detail-qr-img" />
                     <span className="detail-qr-label">{asset.assetTag}</span>
+                  </div>
+                </div>
+              )}
+
+              {asset.documentUrls && asset.documentUrls.length > 0 && (
+                <div className="detail-fields-section">
+                  <p className="detail-fields-heading">Documents</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {asset.documentUrls.map((url, idx) => (
+                      <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="detail-doc-link" style={{ color: "#a78bfa", textDecoration: "underline", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Document {idx + 1}
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
@@ -592,11 +636,15 @@ export default function AssetsDirectory() {
   async function handleRegister(form) {
     setModalLoading(true);
     try {
-      await createAsset({
+      const dataToSave = {
         ...form,
         acquisitionCost: Number(form.acquisitionCost) || 0,
         acquisitionDate: form.acquisitionDate ? new Date(form.acquisitionDate) : null,
-      }, actor());
+        nextServiceDueDate: form.nextServiceDueDate ? new Date(form.nextServiceDueDate) : null,
+        retirementThresholdYears: form.retirementThresholdYears ? Number(form.retirementThresholdYears) : null,
+        documentUrls: form.documentUrls ? form.documentUrls.split(',').map(s => s.trim()).filter(Boolean) : [],
+      };
+      await createAsset(dataToSave, actor());
       setShowRegister(false);
       await loadData();
     } catch (err) { alert("Failed to register asset: " + err.message); }
@@ -606,14 +654,18 @@ export default function AssetsDirectory() {
   async function handleEdit(form) {
     setModalLoading(true);
     try {
-      await updateAsset(editAsset.id, {
+      const dataToSave = {
         ...form,
         acquisitionCost: Number(form.acquisitionCost) || 0,
         acquisitionDate: form.acquisitionDate ? new Date(form.acquisitionDate) : null,
-      }, actor());
+        nextServiceDueDate: form.nextServiceDueDate ? new Date(form.nextServiceDueDate) : null,
+        retirementThresholdYears: form.retirementThresholdYears ? Number(form.retirementThresholdYears) : null,
+        documentUrls: form.documentUrls ? form.documentUrls.split(',').map(s => s.trim()).filter(Boolean) : [],
+      };
+      await updateAsset(editAsset.id, dataToSave, actor());
       // Refresh viewAsset if it's open for this asset
       if (viewAsset?.id === editAsset.id) {
-        setViewAsset(a => ({ ...a, ...form }));
+        setViewAsset(a => ({ ...a, ...dataToSave }));
       }
       setEditAsset(null);
       await loadData();
