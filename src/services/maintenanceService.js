@@ -62,6 +62,13 @@ export async function updateMaintenanceStatus(requestId, newStatus, {
     const reqData = reqSnap.data();
     const assetId = reqData.assetId;
 
+    // Firestore requires all reads before writes
+    let assetStatus = null;
+    if (newStatus === "Resolved") {
+      const assetSnap = await txn.get(doc(db, "assets", assetId));
+      assetStatus = assetSnap.exists() ? assetSnap.data().status : null;
+    }
+
     // Update request doc
     const updateData = { status: newStatus };
     if (technicianName) updateData.technicianName = technicianName;
@@ -83,8 +90,6 @@ export async function updateMaintenanceStatus(requestId, newStatus, {
       });
     } else if (newStatus === "Resolved") {
       // Check if asset is retired before setting Available
-      const assetSnap = await txn.get(doc(db, "assets", assetId));
-      const assetStatus = assetSnap.exists() ? assetSnap.data().status : null;
       if (assetStatus !== "Retired" && assetStatus !== "Disposed") {
         txn.update(doc(db, "assets", assetId), {
           status: "Available", updatedAt: serverTimestamp(),
