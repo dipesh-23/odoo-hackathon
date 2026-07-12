@@ -99,8 +99,9 @@ service cloud.firestore {
     // ─── 7. bookings ──────────────────────────────────────────────────────────
     match /bookings/{bookingId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated()
+      allow create, update: if isAuthenticated()
                    && request.resource.data.status in ["Upcoming", "Ongoing", "Completed", "Cancelled"];
+      allow delete: if isAuthenticated();
     }
 
     // ─── 8. maintenanceRequests ───────────────────────────────────────────────

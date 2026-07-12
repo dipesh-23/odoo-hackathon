@@ -181,6 +181,14 @@ export async function cancelBooking(bookingId, actorUser) {
 }
 
 /**
+ * Delete a booking permanently.
+ */
+export async function deleteBooking(bookingId) {
+  const { deleteDoc } = await import("firebase/firestore");
+  await deleteDoc(doc(db, "bookings", bookingId));
+}
+
+/**
  * Complete a booking (mark as done).
  */
 export async function completeBooking(bookingId) {

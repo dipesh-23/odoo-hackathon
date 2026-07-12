@@ -1499,7 +1499,10 @@ body {
 
 .grid-cell {
   flex: 1;
-  border-top: 1px solid var(--border);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.02);
   transition: background 0.1s;
 }
 
@@ -1509,9 +1512,9 @@ body {
 
 .booking-block {
   position: absolute;
-  left: 80px;
-  /* offset by time-label width */
-  right: 20px;
+  left: 84px;
+  /* offset by time-label width + small inset to keep cell borders visible */
+  right: 24px;
   border-radius: var(--radius-sm);
   padding: 8px 12px;
   display: flex;
@@ -1523,19 +1526,24 @@ body {
 }
 
 .existing-booking {
-  background: var(--accent-blue);
+  background: rgba(37, 99, 235, 0.15);
   color: #fff;
-  border-left: none;
+  border: 2px solid rgba(37, 99, 235, 0.6);
+  border-left: 5px solid var(--accent-blue);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .existing-booking.status-completed {
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-left: 5px solid rgba(255, 255, 255, 0.3);
   color: var(--text-muted);
 }
 
 .existing-booking.status-ongoing {
-  background: var(--success);
+  background: rgba(52, 211, 153, 0.15);
+  border: 2px solid rgba(52, 211, 153, 0.6);
+  border-left: 5px solid var(--success);
   color: #fff;
 }
 
@@ -1549,6 +1557,27 @@ body {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
   margin-top: 4px;
+}
+
+.booking-delete-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  pointer-events: auto;
+}
+
+.booking-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.8);
+  border-color: #ef4444;
+  transform: scale(1.05);
 }
 
 .existing-booking.status-completed .booking-time {
@@ -3318,7 +3347,10 @@ body {
 
       .grid-cell {
         flex: 1;
-        border-top: 1px solid var(--border);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-left: 1px solid rgba(255, 255, 255, 0.15);
+        border-right: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.02);
         transition: background 0.1s;
       }
 
@@ -3328,9 +3360,9 @@ body {
 
       .booking-block {
         position: absolute;
-        left: 80px;
-        /* offset by time-label width */
-        right: 20px;
+        left: 84px;
+        /* offset by time-label width + small inset to keep cell borders visible */
+        right: 24px;
         border-radius: var(--radius-sm);
         padding: 8px 12px;
         display: flex;
@@ -3342,19 +3374,24 @@ body {
       }
 
       .existing-booking {
-        background: var(--accent-blue);
+        background: rgba(37, 99, 235, 0.15);
         color: #fff;
-        border-left: none;
+        border: 2px solid rgba(37, 99, 235, 0.6);
+        border-left: 5px solid var(--accent-blue);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       }
 
       .existing-booking.status-completed {
-        background: var(--surface-hover);
-        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-left: 5px solid rgba(255, 255, 255, 0.3);
         color: var(--text-muted);
       }
 
       .existing-booking.status-ongoing {
-        background: var(--success);
+        background: rgba(52, 211, 153, 0.15);
+        border: 2px solid rgba(52, 211, 153, 0.6);
+        border-left: 5px solid var(--success);
         color: #fff;
       }
 
@@ -3368,6 +3405,27 @@ body {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.8);
         margin-top: 4px;
+      }
+
+      .booking-delete-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        pointer-events: auto;
+      }
+
+      .booking-delete-btn:hover {
+        background: rgba(239, 68, 68, 0.8);
+        border-color: #ef4444;
+        transform: scale(1.05);
       }
 
       .existing-booking.status-completed .booking-time {

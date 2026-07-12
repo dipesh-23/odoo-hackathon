@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { collection, query, where, onSnapshot, getDocs, doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
-import { createBooking } from "../services/bookingService";
+import { createBooking, deleteBooking } from "../services/bookingService";
 
 export default function ResourceBooking() {
   const { currentUser } = useAuth();
@@ -217,6 +217,20 @@ export default function ResourceBooking() {
     }
   };
 
+  const handleDeleteBooking = async (e, bookingId) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this booking?")) return;
+    try {
+      await deleteBooking(bookingId);
+      setToastMsg("Booking deleted!");
+      setTimeout(() => setToastMsg(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message || "Failed to delete booking");
+      setTimeout(() => setErrorMsg(""), 3000);
+    }
+  };
+
   // Compute "Ongoing", "Upcoming", "Completed" visually without saving to DB
   const getVisualStatus = (b) => {
     const now = new Date();
@@ -312,8 +326,24 @@ export default function ResourceBooking() {
                 className={`booking-block existing-booking status-${vStatus.toLowerCase()}`}
                 style={{ top: `${top}px`, height: `${height}px` }}
               >
-                <span className="booking-title">{b.bookedByName}</span>
-                <span className="booking-time">{formatHour(b.startTime.getHours())} - {formatHour(b.endTime.getHours())}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="booking-title">{b.bookedByName}</span>
+                    <span className="booking-time">{formatHour(b.startTime.getHours())} - {formatHour(b.endTime.getHours())}</span>
+                  </div>
+                  {b.bookedByUserId === currentUser.uid && (
+                    <button 
+                      onClick={(e) => handleDeleteBooking(e, b.id)}
+                      className="booking-delete-btn"
+                      title="Delete Booking"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
