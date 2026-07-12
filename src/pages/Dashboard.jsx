@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
+import ResourceBooking from "./ResourceBooking";
 
 export default function Dashboard({ onLogout }) {
   const { currentUser, logout } = useAuth();
@@ -55,7 +56,8 @@ export default function Dashboard({ onLogout }) {
           {/* Page Content */}
           <div className="page-content">
             {activePage === "org-setup" && <OrganizationSetup />}
-            {activePage !== "org-setup" && (
+            {activePage === "resource-booking" && <ResourceBooking />}
+            {activePage !== "org-setup" && activePage !== "resource-booking" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">

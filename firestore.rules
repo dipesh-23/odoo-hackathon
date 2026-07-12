@@ -61,7 +61,7 @@ service cloud.firestore {
         return status in ["Available", "Allocated", "Reserved", "UnderMaintenance", "Lost", "Retired", "Disposed"];
       }
 
-      allow create: if isAssetManager() && isValidAssetStatus(request.resource.data.status);
+      allow create: if isAuthenticated() && isValidAssetStatus(request.resource.data.status);
       allow update: if isAuthenticated() && isValidAssetStatus(request.resource.data.status);
       allow delete: if isAdmin();
 
