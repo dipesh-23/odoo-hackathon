@@ -27,6 +27,15 @@ export const canDirectlyAllocate = (role) => has(role, "Admin", "AssetManager");
 export const canRequestTransfer  = (_role) => true;
 /** Admin + AssetManager + DepartmentHead can approve/reject transfers. */
 export const canApproveTransfer  = (role) => has(role, "Admin", "AssetManager", "DepartmentHead");
+/**
+ * Scoped approval: DepartmentHead may only approve transfers for assets in THEIR department.
+ * Admin and AssetManager can approve any.
+ */
+export const canApproveSpecificTransfer = (role, userDeptId, assetDeptId) => {
+  if (has(role, "Admin", "AssetManager")) return true;
+  if (role === "DepartmentHead") return userDeptId && userDeptId === assetDeptId;
+  return false;
+};
 /** Admin + AssetManager can mark assets as returned. */
 export const canReturnAsset      = (role) => has(role, "Admin", "AssetManager");
 

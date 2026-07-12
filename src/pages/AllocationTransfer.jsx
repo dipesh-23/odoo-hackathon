@@ -16,6 +16,7 @@ import { getAssetHistory } from "../services/assetService";
 import {
   canDirectlyAllocate,
   canApproveTransfer,
+  canApproveSpecificTransfer,
   canReturnAsset,
   scopeAllocations,
 } from "../utils/rbac";
@@ -435,7 +436,7 @@ function TransferApprovalPanel({ alloc, employees, departments, onClose, onAppro
 }
 
 // ─── Allocation Row Action Menu ────────────────────────────────────────────────────
-function AllocActionMenu({ alloc, role, currentUserId, onReturn, onTransferRequest, onViewTransfer }) {
+function AllocActionMenu({ alloc, role, userDeptId, currentUserId, onReturn, onTransferRequest, onViewTransfer }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -446,7 +447,8 @@ function AllocActionMenu({ alloc, role, currentUserId, onReturn, onTransferReque
 
   // Role-gated capabilities (from rbac.js)
   const allowReturn  = canReturnAsset(role);
-  const allowApprove = canApproveTransfer(role);
+  // DeptHead can only approve transfers for assets in their own department
+  const allowApprove = canApproveSpecificTransfer(role, userDeptId, alloc.departmentId);
   // Anyone can request a transfer on allocations they can see
   const allowRequest = true;
 
@@ -753,6 +755,7 @@ export default function AllocationTransfer() {
                         <AllocActionMenu
                           alloc={alloc}
                           role={role}
+                          userDeptId={userProfile?.departmentId}
                           currentUserId={currentUser?.uid}
                           onReturn={a => setReturnAlloc(a)}
                           onTransferRequest={a => setTransferReqAlloc(a)}

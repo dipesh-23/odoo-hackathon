@@ -4,6 +4,8 @@ import Sidebar from "../components/Sidebar";
 import OrganizationSetup from "./OrganizationSetup";
 import AssetsDirectory from "./AssetsDirectory";
 import AllocationTransfer from "./AllocationTransfer";
+import ResourceBooking from "./ResourceBooking";
+import Maintenance from "./Maintenance";
 import { canManageOrg, canRegisterAsset, canViewReports, canManageAudit } from "../utils/rbac";
 
 // Maps each role to its home/default page
@@ -89,10 +91,13 @@ export default function Dashboard({ onLogout }) {
 
           {/* Page Content */}
           <div className="page-content">
-            {activePage === "org-setup"  && <OrganizationSetup />}
-            {activePage === "assets"     && <AssetsDirectory />}
-            {activePage === "allocation" && <AllocationTransfer />}
-            {activePage !== "org-setup" && activePage !== "assets" && activePage !== "allocation" && (
+            {activePage === "org-setup"        && <OrganizationSetup />}
+            {activePage === "assets"            && <AssetsDirectory />}
+            {activePage === "allocation"        && <AllocationTransfer />}
+            {activePage === "resource-booking" && <ResourceBooking />}
+            {activePage === "maintenance"       && <Maintenance />}
+            {activePage !== "org-setup" && activePage !== "assets" && activePage !== "allocation" &&
+             activePage !== "resource-booking" && activePage !== "maintenance" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
