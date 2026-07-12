@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { listAssets } from "../services/assetService";
 import { listBookings } from "../services/bookingService";
 import { getPendingTransfers, getOverdueAllocations, getActiveAllocations } from "../services/allocationService";
 import { getRecentActivity } from "../services/activityLogService";
 
 export default function DashboardOverview({ onNavigate }) {
+  const { currentUser, userProfile } = useAuth();
+  const role = userProfile?.role || "Employee";
+  const userId = currentUser?.uid;
+  const deptId = userProfile?.departmentId;
   const [metrics, setMetrics] = useState({
     available: 0,
     allocated: 0,
@@ -37,7 +42,7 @@ export default function DashboardOverview({ onNavigate }) {
           getPendingTransfers(),
           getOverdueAllocations(),
           getActiveAllocations(),
-          getRecentActivity(6),
+          getRecentActivity(100),
         ]);
 
         const upcomingReturnsCount = activeAllocations.filter((a) => {
@@ -57,8 +62,23 @@ export default function DashboardOverview({ onNavigate }) {
           upcomingReturns: upcomingReturnsCount,
         });
 
+        const scopedActivities = recentActivityList.filter(a => {
+          if (role === "Admin" || role === "AssetManager") return true;
+          const actorMatch = a.actorUserId === userId;
+          const meta = a.metadata || {};
+          if (role === "DepartmentHead") {
+            if (actorMatch) return true;
+            if (meta.departmentId === deptId || meta.toDepartmentId === deptId || meta.fromDepartmentId === deptId || meta.bookedOnBehalfOf === deptId) return true;
+            return false;
+          }
+          // Employee
+          if (actorMatch) return true;
+          if (meta.holderId === userId || meta.toUserId === userId || meta.assignedTo === userId || meta.userId === userId) return true;
+          return false;
+        }).slice(0, 6);
+
         setOverdueCount(overdueList.length);
-        setActivities(recentActivityList);
+        setActivities(scopedActivities);
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
       } finally {
@@ -194,9 +214,9 @@ export default function DashboardOverview({ onNavigate }) {
         </button>
       </div>
 
-      {/* Recent Activity */}
+      {/* Activity Log */}
       <div className="dashboard-activity">
-        <h3 className="dashboard-activity-title">Recent Activity</h3>
+        <h3 className="dashboard-activity-title">Activity Log</h3>
         <div className="dashboard-activity-list">
           {activities.length === 0 ? (
             <span className="dashboard-activity-empty">
