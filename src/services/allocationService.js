@@ -112,9 +112,15 @@ export async function returnAsset(allocationId, { returnConditionNotes = null } 
 }
 
 /** Request a transfer. */
-export async function requestTransfer(allocationId, { requestedByUserId, requestedForUserId, reason }) {
+export async function requestTransfer(allocationId, {
+  requestedByUserId, requestedByName = "",
+  requestedForUserId, reason,
+  newHolderType = "Employee", newHolderName = "",
+}) {
   const ref = await addDoc(collection(db, "allocations", allocationId, "transferRequests"), {
-    requestedByUserId, requestedForUserId, reason,
+    requestedByUserId, requestedByName,
+    requestedForUserId, newHolderType, newHolderName,
+    reason,
     status: "Requested", approvedByUserId: null,
     requestedAt: serverTimestamp(), resolvedAt: null,
   });

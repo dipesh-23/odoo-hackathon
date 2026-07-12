@@ -10,6 +10,7 @@ import { getActiveCategories } from "../services/categoryService";
 import { getActiveDepartments } from "../services/departmentService";
 import { deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
+import { canRegisterAsset, canEditAsset, canDeleteAsset } from "../utils/rbac";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -106,7 +107,8 @@ function FilterPill({ label, value, options, onChange, onClear }) {
 }
 
 // ─── Three-dot Action Menu ────────────────────────────────────────────────────
-function ActionMenu({ asset, onEdit, onDelete }) {
+// role-gated: edit = Admin|AssetManager, delete = Admin only
+function ActionMenu({ asset, role, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -114,6 +116,12 @@ function ActionMenu({ asset, onEdit, onDelete }) {
     if (open) document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
+
+  const allowEdit   = canEditAsset(role);
+  const allowDelete = canDeleteAsset(role);
+
+  // No actions available for this role — hide the menu entirely
+  if (!allowEdit && !allowDelete) return null;
 
   return (
     <div className="action-menu-wrap" ref={ref}>
@@ -125,22 +133,26 @@ function ActionMenu({ asset, onEdit, onDelete }) {
       </button>
       {open && (
         <div className="action-menu-dropdown">
-          <button className="action-menu-item" onClick={e => { e.stopPropagation(); setOpen(false); onEdit(asset); }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit Asset
-          </button>
-          <div className="action-menu-separator" />
-          <button className="action-menu-item action-menu-danger" onClick={e => { e.stopPropagation(); setOpen(false); onDelete(asset); }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-            Delete
-          </button>
+          {allowEdit && (
+            <button className="action-menu-item" onClick={e => { e.stopPropagation(); setOpen(false); onEdit(asset); }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit Asset
+            </button>
+          )}
+          {allowEdit && allowDelete && <div className="action-menu-separator" />}
+          {allowDelete && (
+            <button className="action-menu-item action-menu-danger" onClick={e => { e.stopPropagation(); setOpen(false); onDelete(asset); }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              Delete
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -550,6 +562,7 @@ function DetailField({ label, value, fallback = "—" }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AssetsDirectory() {
   const { currentUser, userProfile } = useAuth();
+  const role = userProfile?.role || "Employee";
 
   // Data
   const [allAssets,    setAllAssets]    = useState([]);
@@ -696,12 +709,14 @@ export default function AssetsDirectory() {
             {loadingData ? "Loading…" : `${allAssets.length} registered · ${filtered.length} shown`}
           </p>
         </div>
-        <button id="register-asset-btn" className="org-add-btn" onClick={() => setShowRegister(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Register Asset
-        </button>
+        {canRegisterAsset(role) && (
+          <button id="register-asset-btn" className="org-add-btn" onClick={() => setShowRegister(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Register Asset
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -796,7 +811,7 @@ export default function AssetsDirectory() {
                         <td className="org-cell-muted">{asset.location || "—"}</td>
                         <td className="org-cell-muted">{asset.departmentName || "—"}</td>
                         <td className="assets-actions-cell" onClick={e => e.stopPropagation()}>
-                          <ActionMenu asset={asset}
+                          <ActionMenu asset={asset} role={role}
                             onEdit={a => { setEditAsset(a); }}
                             onDelete={a => setDeleteAsset(a)} />
                         </td>
@@ -824,12 +839,12 @@ export default function AssetsDirectory() {
           onEdit={a => { setEditAsset(a); }} />
       )}
 
-      {/* Modals */}
-      {showRegister && (
+      {/* Modals — gated by role */}
+      {showRegister && canRegisterAsset(role) && (
         <AssetModal mode="register" categories={categories} departments={departments}
           onClose={() => setShowRegister(false)} onSave={handleRegister} loading={modalLoading} />
       )}
-      {editAsset && (
+      {editAsset && canEditAsset(role) && (
         <AssetModal mode="edit" asset={editAsset} categories={categories} departments={departments}
           onClose={() => setEditAsset(null)} onSave={handleEdit} loading={modalLoading} />
       )}

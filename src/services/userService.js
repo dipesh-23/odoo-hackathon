@@ -16,9 +16,6 @@ import {
   updateDoc,
   getDocs,
   collection,
-  query,
-  where,
-  orderBy,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -108,17 +105,22 @@ export async function listUsers({
   role = null,
   status = null,
 } = {}) {
-  const constraints = [];
+  // Fetch all docs and filter client-side — avoids composite index requirements
+  const snap = await getDocs(collection(db, "users"));
+  let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  if (departmentId) constraints.push(where("departmentId", "==", departmentId));
-  if (role) constraints.push(where("role", "==", role));
-  if (status) constraints.push(where("status", "==", status));
+  if (departmentId) docs = docs.filter((d) => d.departmentId === departmentId);
+  if (role)         docs = docs.filter((d) => d.role === role);
+  if (status)       docs = docs.filter((d) => d.status === status);
 
-  constraints.push(orderBy("createdAt", "desc"));
+  // Sort newest first
+  docs.sort((a, b) => {
+    const ta = a.createdAt?.seconds ?? 0;
+    const tb = b.createdAt?.seconds ?? 0;
+    return tb - ta;
+  });
 
-  const q = query(collection(db, "users"), ...constraints);
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return docs;
 }
 
 /**
