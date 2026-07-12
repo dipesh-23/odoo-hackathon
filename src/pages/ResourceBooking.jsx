@@ -148,10 +148,16 @@ export default function ResourceBooking() {
       setSelectionStart(hour);
       setSelectionEnd(hour + 1); // default 1 hr
     } else {
+      // If they click the start of a 1-hour selection, deselect it
+      if (hour === selectionStart && selectionEnd === hour + 1) {
+        handleClearSelection();
+        return;
+      }
       // If we click again, we adjust the range or start over
       if (hour >= selectionStart) {
         setSelectionEnd(hour + 1);
       } else {
+        if (isBooked) return; // Prevent selecting a booked slot when shifting start earlier
         setSelectionStart(hour);
         setSelectionEnd(hour + 1);
       }
