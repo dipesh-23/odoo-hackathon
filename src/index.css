@@ -1822,3 +1822,170 @@ body {
   font-weight: 400;
   margin-left: 4px;
 }
+
+/* ─── Dashboard Overview ─────────────────────────────────────── */
+.dashboard-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 12px 4px;
+  max-width: 960px;
+}
+
+.dashboard-section-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+
+/* Metric Cards */
+.dashboard-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.dashboard-metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  cursor: default;
+}
+
+.dashboard-metric-card:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.dashboard-metric-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-metric-value {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Overdue Alert */
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.07);
+  color: #f87171;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+/* Quick Actions */
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-action-btn {
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.dashboard-action-btn:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.dashboard-action-btn--primary {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.12));
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.dashboard-action-btn--primary:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.26), rgba(16, 185, 129, 0.2));
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+/* Recent Activity */
+.dashboard-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dashboard-activity-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.dashboard-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-activity-item {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+  line-height: 1.5;
+}
+
+.dashboard-activity-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Loading state */
+.dashboard-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+.dashboard-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

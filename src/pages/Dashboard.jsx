@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
+import DashboardOverview from "../components/DashboardOverview";
 import OrganizationSetup from "./OrganizationSetup";
 import AssetsDirectory from "./AssetsDirectory";
 
@@ -59,9 +60,10 @@ export default function Dashboard({ onLogout }) {
 
           {/* Page Content */}
           <div className="page-content">
+            {activePage === "dashboard" && <DashboardOverview onNavigate={setActivePage} />}
             {activePage === "org-setup" && <OrganizationSetup />}
             {activePage === "assets" && <AssetsDirectory />}
-            {activePage !== "org-setup" && activePage !== "assets" && (
+            {activePage !== "dashboard" && activePage !== "org-setup" && activePage !== "assets" && (
               <div className="coming-soon-card">
                 <div className="coming-soon-icon">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
