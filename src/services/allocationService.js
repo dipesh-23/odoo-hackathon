@@ -196,9 +196,17 @@ export async function listAllocations({ assetId = null, holderId = null, status 
   if (assetId) c.push(where("assetId", "==", assetId));
   if (holderId) c.push(where("holderId", "==", holderId));
   if (status) c.push(where("status", "==", status));
-  c.push(orderBy("allocatedAt", "desc"), limit(maxResults));
+  c.push(limit(maxResults));
   const snap = await getDocs(query(collection(db, "allocations"), ...c));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  docs.sort((a, b) => {
+    const timeA = a.allocatedAt?.toMillis ? a.allocatedAt.toMillis() : 0;
+    const timeB = b.allocatedAt?.toMillis ? b.allocatedAt.toMillis() : 0;
+    return timeB - timeA;
+  });
+  
+  return docs;
 }
 
 export async function getActiveAllocations() { return listAllocations({ status: "Active" }); }
@@ -206,9 +214,17 @@ export async function getActiveAllocations() { return listAllocations({ status: 
 /** Collection-group query — pending transfers across all allocations. */
 export async function getPendingTransfers() {
   const q = query(collectionGroup(db, "transferRequests"),
-    where("status", "==", "Requested"), orderBy("requestedAt", "desc"));
+    where("status", "==", "Requested"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  docs.sort((a, b) => {
+    const timeA = a.requestedAt?.toMillis ? a.requestedAt.toMillis() : 0;
+    const timeB = b.requestedAt?.toMillis ? b.requestedAt.toMillis() : 0;
+    return timeB - timeA;
+  });
+  
+  return docs;
 }
 
 export async function getTransferRequests(allocationId) {
@@ -220,9 +236,27 @@ export async function getTransferRequests(allocationId) {
 /** Overdue allocations — computed at read time. */
 export async function getOverdueAllocations() {
   const q = query(collection(db, "allocations"),
-    where("status", "==", "Active"),
-    where("expectedReturnDate", "<", new Date()),
-    orderBy("expectedReturnDate", "asc"));
+    where("status", "==", "Active"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  const now = new Date();
+  const docs = [];
+  
+  snap.forEach(d => {
+    const data = d.data();
+    if (data.expectedReturnDate) {
+      const expDate = data.expectedReturnDate.toDate ? data.expectedReturnDate.toDate() : new Date(data.expectedReturnDate);
+      if (expDate < now) {
+        docs.push({ id: d.id, ...data });
+      }
+    }
+  });
+  
+  docs.sort((a, b) => {
+    const timeA = a.expectedReturnDate?.toMillis ? a.expectedReturnDate.toMillis() : 0;
+    const timeB = b.expectedReturnDate?.toMillis ? b.expectedReturnDate.toMillis() : 0;
+    return timeA - timeB;
+  });
+  
+  return docs;
 }

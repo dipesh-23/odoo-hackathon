@@ -243,12 +243,20 @@ export async function listAssets({
   if (location) constraints.push(where("location", "==", location));
   if (isBookable !== null) constraints.push(where("isBookable", "==", isBookable));
 
-  constraints.push(orderBy("createdAt", "desc"));
   constraints.push(limit(maxResults));
 
   const q = query(collection(db, "assets"), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  // Client-side sort to avoid composite index requirement
+  docs.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return timeB - timeA;
+  });
+  
+  return docs;
 }
 
 /**
