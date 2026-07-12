@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import SpotlightCard from "../components/SpotlightCard";
+import { useAuth } from "../context/AuthContext";
 import {
   listDepartments,
   createDepartment,
   updateDepartment,
 } from "../services/departmentService";
 import { listCategories, createCategory } from "../services/categoryService";
-import { listUsers } from "../services/userService";
+import { listUsers, promoteUser } from "../services/userService";
 
 const tabs = [
   { id: "departments", label: "Departments" },
@@ -15,6 +16,8 @@ const tabs = [
 ];
 
 export default function OrganizationSetup() {
+  const { currentUser, userProfile } = useAuth();
+  const currentRole = userProfile?.role || "Employee";
   const [activeTab, setActiveTab] = useState("departments");
 
   // ─── Data from Firestore ──────────────────────────────────────
@@ -26,6 +29,8 @@ export default function OrganizationSetup() {
 
   // ─── Modal state ──────────────────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingRoleChange, setPendingRoleChange] = useState(null); // { employee, newRole }
 
   // Department form
   const [newDept, setNewDept] = useState({
@@ -128,6 +133,29 @@ export default function OrganizationSetup() {
     } catch (err) {
       console.error("Failed to toggle status:", err);
       setErrorMsg("Failed to update status. Check your permissions.");
+    }
+  };
+
+  // ─── Promote or Demote Employee Role ──────────────────────────
+  const handleRoleChange = (employee, newRole) => {
+    setPendingRoleChange({ employee, newRole });
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!pendingRoleChange) return;
+    const { employee, newRole } = pendingRoleChange;
+    setErrorMsg(null);
+    setShowConfirmModal(false);
+    try {
+      await promoteUser(currentUser?.uid || "", employee.id, newRole);
+      setEmployees((prev) =>
+        prev.map((emp) => (emp.id === employee.id ? { ...emp, role: newRole } : emp))
+      );
+      setPendingRoleChange(null);
+    } catch (err) {
+      console.error("Failed to change employee role:", err);
+      setErrorMsg("Failed to change employee role. You might not have Admin permissions.");
     }
   };
 
@@ -297,7 +325,30 @@ export default function OrganizationSetup() {
                           <td>{emp.email}</td>
                           <td>{emp.departmentName || "Unassigned"}</td>
                           <td>
-                            <span className="role-badge">{emp.role}</span>
+                            {currentRole === "Admin" ? (
+                              <select
+                                value={emp.role}
+                                onChange={(e) => handleRoleChange(emp, e.target.value)}
+                                style={{
+                                  background: "rgba(10, 10, 24, 0.8)",
+                                  border: "1px solid var(--border)",
+                                  borderRadius: "var(--radius-sm)",
+                                  color: "var(--text-primary)",
+                                  padding: "4px 8px",
+                                  fontSize: "13px",
+                                  outline: "none",
+                                  cursor: "pointer",
+                                  fontFamily: "inherit"
+                                }}
+                              >
+                                <option value="Employee">Employee</option>
+                                <option value="DepartmentHead">Department Head</option>
+                                <option value="AssetManager">Asset Manager</option>
+                                <option value="Admin">Admin</option>
+                              </select>
+                            ) : (
+                              <span className="role-badge">{emp.role}</span>
+                            )}
                           </td>
                           <td>
                             <span className={`status-pill ${emp.status === "Active" ? "status-active" : "status-inactive"}`}>
@@ -418,6 +469,36 @@ export default function OrganizationSetup() {
             <div className="modal-footer">
               <button className="btn-outline modal-cancel" onClick={() => setShowAddModal(false)}>Cancel</button>
               <button id="confirm-add-cat" className="btn-primary modal-confirm" onClick={handleAddCategory}>Add Category</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Confirm Role Change Modal ─────────────────────────── */}
+      {showConfirmModal && pendingRoleChange && (
+        <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setPendingRoleChange(null); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirm Role Change</h2>
+              <button className="modal-close" onClick={() => { setShowConfirmModal(false); setPendingRoleChange(null); }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body" style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.6" }}>
+              <p>
+                Are you sure you want to change the role of{" "}
+                <strong>{pendingRoleChange.employee.name || pendingRoleChange.employee.email}</strong> from{" "}
+                <span className="role-badge" style={{ verticalAlign: "middle" }}>{pendingRoleChange.employee.role}</span> to{" "}
+                <span className="role-badge" style={{ verticalAlign: "middle", background: "rgba(139, 92, 246, 0.2)", borderColor: "rgba(139, 92, 246, 0.4)" }}>{pendingRoleChange.newRole}</span>?
+              </p>
+              <p style={{ marginTop: "12px", color: "var(--text-muted)", fontSize: "13px" }}>
+                This will immediately update their access permissions across the system.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-outline modal-cancel" onClick={() => { setShowConfirmModal(false); setPendingRoleChange(null); }}>Cancel</button>
+              <button id="confirm-change-role-btn" className="btn-primary modal-confirm" onClick={handleConfirmRoleChange}>Confirm Change</button>
             </div>
           </div>
         </div>
